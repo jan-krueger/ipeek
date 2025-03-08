@@ -6,7 +6,7 @@ pub async fn doc_handler(
     req: HttpRequest,
     geo_db: web::Data<Reader<Vec<u8>>>,
 ) -> HttpResponse {
-    let info = get_info(&req, &geo_db);
+    let info = get_info(&req, &geo_db).await;
 
     let ip_address   = info.ip;
     let remote_host  = info.reverse_dns.unwrap_or_else(|| "unknown".to_string());

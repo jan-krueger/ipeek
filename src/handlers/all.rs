@@ -8,6 +8,6 @@ pub async fn all_handler(
     geo_db: web::Data<Reader<Vec<u8>>>,
     query: web::Query<QueryOptions>,
 ) -> HttpResponse {
-    let info = get_info(&req, &geo_db);
+    let info = get_info(&req, &geo_db).await;
     format_response(query.format.as_deref(), &info)
 }

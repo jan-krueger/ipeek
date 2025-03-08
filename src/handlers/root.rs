@@ -12,6 +12,6 @@ pub async fn root_handler(
     if is_browser(&req) {
         doc::doc_handler(req, geo_db).await
     } else {
-        ip::ip_handler(req, geo_db, query).await
+        ip::ip_handler(req, query).await
     }
 }

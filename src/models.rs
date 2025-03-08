@@ -17,9 +17,8 @@ pub struct Info {
 impl ToPlainText for Info {
     fn to_plain_text(&self) -> String {
         format!(
-            "IP: {}\nReverse DNS: {}\nCountry: {}\nCity: {}\nRegion: {}",
+            "IP: {}\nCountry: {}\nCity: {}\nRegion: {}",
             self.ip,
-            self.reverse_dns.clone().unwrap_or_else(|| "unknown".to_string()),
             self.country.clone().unwrap_or_else(|| "unknown".to_string()),
             self.city.clone().unwrap_or_else(|| "unknown".to_string()),
             self.region.clone().unwrap_or_else(|| "unknown".to_string())

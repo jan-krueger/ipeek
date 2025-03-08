@@ -1,9 +1,12 @@
 use actix_web::{HttpRequest, HttpResponse};
 use maxminddb::Reader;
 use serde::Serialize;
-use crate::models::{Info, AsnRecord, ToPlainText};
-use dns_lookup::lookup_addr;
-use std::net::IpAddr;
+use crate::models::{Info, ToPlainText};
+use std::net::{IpAddr, Ipv4Addr};
+use crate::handlers::city::get_city;
+use crate::handlers::country::get_country;
+use crate::handlers::region::get_region;
+use crate::handlers::reverse_dns::get_reverse_dns;
 
 pub fn format_response<T>(format: Option<&str>, data: &T) -> HttpResponse
 where
@@ -58,13 +61,13 @@ where
             .body(format!("{}\n", data.to_plain_text())),
     }
 }
-pub fn get_ip(req: &HttpRequest) -> String {
+pub fn get_ip(req: &HttpRequest) -> IpAddr {
     if let Some(forwarded_for) = req.headers().get("X-Forwarded-For") {
         if let Ok(forwarded_for_str) = forwarded_for.to_str() {
             if let Some(ip) = forwarded_for_str.split(',').next() {
                 let ip_trimmed = ip.trim();
-                if !ip_trimmed.is_empty() {
-                    return ip_trimmed.to_string();
+                if let Ok(parsed_ip) = ip_trimmed.parse::<IpAddr>() {
+                    return parsed_ip;
                 }
             }
         }
@@ -72,46 +75,25 @@ pub fn get_ip(req: &HttpRequest) -> String {
 
     if let Some(real_ip) = req.headers().get("X-Real-IP") {
         if let Ok(real_ip_str) = real_ip.to_str() {
-            if !real_ip_str.trim().is_empty() {
-                return real_ip_str.trim().to_string();
+            if let Ok(parsed_ip) = real_ip_str.trim().parse::<IpAddr>() {
+                return parsed_ip;
             }
         }
     }
 
     req.connection_info()
         .realip_remote_addr()
-        .unwrap_or("unknown")
-        .to_string()
+        .and_then(|ip| ip.parse::<IpAddr>().ok()) // Convert to IpAddr safely
+        .unwrap_or(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))) // Default to 127.0.0.1 if invalid
 }
 
 
-pub fn get_info(req: &HttpRequest, geo_db: &Reader<Vec<u8>>) -> Info {
-    // Parse IP address.
-    let ip: IpAddr = get_ip(req).parse().unwrap_or_else(|_| "0.0.0.0".parse().unwrap());
-
-    // Reverse DNS lookup.
-    let reverse_dns = lookup_addr(&ip).ok();
-
-    // GeoIP lookup.
-    let city_record: Option<crate::models::CityRecord> = geo_db.lookup(ip).ok();
-
-    let country = city_record.as_ref().and_then(|record| {
-        record.country.as_ref().and_then(|c| {
-            c.names.as_ref().and_then(|names| names.get("en").cloned())
-        })
-    });
-    let city = city_record.as_ref().and_then(|record| {
-        record.city.as_ref().and_then(|c| {
-            c.names.as_ref().and_then(|names| names.get("en").cloned())
-        })
-    });
-    let region = city_record.as_ref().and_then(|record| {
-        record.subdivisions.as_ref().and_then(|subs| {
-            subs.get(0).and_then(|sub| {
-                sub.names.as_ref().and_then(|names| names.get("en").cloned())
-            })
-        })
-    });
+pub async fn get_info(req: &HttpRequest, geo_db: &Reader<Vec<u8>>) -> Info {
+    let ip: IpAddr = get_ip(req);
+    let reverse_dns = get_reverse_dns(ip).await;
+    let city = get_city(ip, geo_db);
+    let country = get_country(ip, geo_db);
+    let region = get_region(ip, geo_db);
 
     Info {
         ip: ip.to_string(),
@@ -121,18 +103,6 @@ pub fn get_info(req: &HttpRequest, geo_db: &Reader<Vec<u8>>) -> Info {
         region,
     }
 }
-
-pub fn get_asn_info(req: &HttpRequest, asn_db: &Reader<Vec<u8>>) -> AsnRecord {
-    let connection_info = req.connection_info();
-    let ip_str = connection_info.realip_remote_addr().unwrap_or("unknown");
-    let ip: IpAddr = ip_str.parse().unwrap_or_else(|_| "0.0.0.0".parse().unwrap());
-
-    asn_db.lookup(ip).unwrap_or(AsnRecord {
-        autonomous_system_number: None,
-        autonomous_system_organization: Some("unknown".to_string()),
-    })
-}
-
 
 static KNOWN_BROWSERS: [&str; 8] = [
     "chrome",
