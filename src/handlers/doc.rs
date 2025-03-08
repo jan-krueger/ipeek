@@ -1,16 +1,17 @@
+use std::sync::Arc;
 use actix_web::{web, HttpRequest, HttpResponse};
-use maxminddb::Reader;
+use crate::AppState;
 use crate::util::{get_info, is_browser};
 
 pub async fn doc_handler(
     req: HttpRequest,
-    geo_db: web::Data<Reader<Vec<u8>>>,
+    state: web::Data<Arc<AppState>>,
 ) -> HttpResponse {
-    let info = get_info(&req, &geo_db).await;
+    let info = get_info(&req, &state.geo_db).await;
 
     let ip_address   = info.ip;
-    let remote_host  = info.reverse_dns.unwrap_or_else(|| "unknown".to_string());
-    let country_code = info.country.unwrap_or_else(|| "unknown".to_string());
+    let remote_host  = info.reverse_dns.unwrap_or_else(|| "".to_string());
+    let country_code = info.country.unwrap_or_else(|| "".to_string());
 
     let (green, cyan, yellow, magenta, reset) = if is_browser(&req) {
         ("", "", "", "", "")

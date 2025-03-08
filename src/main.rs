@@ -3,23 +3,32 @@ mod models;
 mod util;
 mod handlers;
 
+use std::sync::Arc;
 use std::time::Duration;
 use actix_web::{web, App, HttpServer};
 use actix_web::middleware::Logger;
 use env_logger::Env;
-use maxminddb::Reader;
+use maxminddb::{Reader};
+
+struct AppState {
+    geo_db: Reader<Vec<u8>>,
+    asn_db: Reader<Vec<u8>>,
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let config = config::load_config("config.toml").expect("Failed to load configuration");
+    let config = config::load_config("config.toml")
+        .expect("Failed to load configuration");
 
     let geo_reader = Reader::open_readfile(&config.geo_db_path)
         .expect("Could not open GeoLite2 City database");
-    let geo_data = web::Data::new(geo_reader);
-
     let asn_reader = Reader::open_readfile(&config.asn_db_path)
         .expect("Could not open GeoLite2 ASN database");
-    let asn_data = web::Data::new(asn_reader);
+
+    let shared_state = Arc::new(AppState {
+        geo_db: geo_reader,
+        asn_db: asn_reader,
+    });
 
     println!("Starting ipeek on http://{}", config.server_address);
 
@@ -27,8 +36,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
-            .app_data(geo_data.clone())
-            .app_data(asn_data.clone())
+            .app_data(web::Data::new(shared_state.clone()))
             .wrap(Logger::new("%a %r %s %D"))
             .configure(handlers::init_routes)
         })

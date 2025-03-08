@@ -83,8 +83,8 @@ pub fn get_ip(req: &HttpRequest) -> IpAddr {
 
     req.connection_info()
         .realip_remote_addr()
-        .and_then(|ip| ip.parse::<IpAddr>().ok()) // Convert to IpAddr safely
-        .unwrap_or(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))) // Default to 127.0.0.1 if invalid
+        .and_then(|ip| ip.parse::<IpAddr>().ok())
+        .unwrap_or(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)))
 }
 
 
