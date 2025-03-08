@@ -1,0 +1,4 @@
+# config.toml
+server_address = "0.0.0.0:8080"
+geo_db_path = "/home/jan/Downloads/GeoLite2-City.mmdb"
+asn_db_path = "/home/jan/Downloads/GeoLite2-ASN.mmdb"
