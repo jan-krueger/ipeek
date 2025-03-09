@@ -1,6 +1,6 @@
 use crate::format_middleware::Format;
 use crate::handlers::asn::get_asn_info;
-use crate::handlers::blacklist::get_blacklist;
+use crate::handlers::blocklist::get_blocklist;
 use crate::handlers::city::get_city;
 use crate::handlers::country::get_country;
 use crate::handlers::country_code::get_country_code;
@@ -25,7 +25,7 @@ pub async fn get_all_response(req: &HttpRequest, state: &web::Data<Arc<AppState>
     let region = get_region(ip, &state.geo_db).unwrap_or("".to_string());
     let city = get_city(ip, &state.geo_db).unwrap_or("".to_string());
     let asn = get_asn_info(&req, &state.asn_db);
-    let blacklist = get_blacklist(&ip).await;
+    let blocklist = get_blocklist(&ip).await;
 
     AllResponse {
         ip: ip.to_string(),
@@ -35,6 +35,6 @@ pub async fn get_all_response(req: &HttpRequest, state: &web::Data<Arc<AppState>
         region,
         city,
         asn,
-        blacklist,
+        blocklist,
     }
 }

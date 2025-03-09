@@ -55,5 +55,5 @@ You can force an IPv4 connection by using the subdomain `4.ipeek.io` and force a
 | `curl ipeek.io/region`       | `Bavaria`                                                                                                                  |
 | `curl ipeek.io/asn`          | `ASN: 8767`<br>`Organization: M-net Telekommunikations GmbH     `                                                          |
 | `curl ipeek.io/all`          | `IP: 192.0.2.1`<br>`Hostname: ppp-192-0-2-1.example.com`<br>`Country: Germany (DE)`<br>`Region: Bavaria`<br>`City: Munich` |
-| `curl ipeek.io/blacklist`    | `IP: 192.0.2.1`<br>`Blacklisted: yes`<br>`Lists:`<br>&nbsp;&nbsp;&nbsp;&nbsp;- `b.barracudacentral.org (SpamSource)`       |
+| `curl ipeek.io/blocklist`    | `IP: 192.0.2.1`<br>`Blocked: yes`<br>`Lists:`<br>&nbsp;&nbsp;&nbsp;&nbsp;- `b.barracudacentral.org (SpamSource)`           |
 | `curl ipeek.io/docs`         | (Documentation in plain-text format)                                                                                       |

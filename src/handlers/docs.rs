@@ -1,7 +1,7 @@
 use crate::format_middleware::Format;
 use crate::handlers::all::get_all_response;
 use crate::handlers::asn::get_asn_response;
-use crate::handlers::blacklist::get_blacklist_response;
+use crate::handlers::blocklist::get_blocklist_response;
 use crate::handlers::city::get_city_response;
 use crate::handlers::country::get_country_response;
 use crate::handlers::country_code::get_country_code_response;
@@ -187,8 +187,8 @@ async fn curl_request_table(req: HttpRequest, state: web::Data<Arc<AppState>>) -
     );
     add_row!(
         table,
-        "blacklist",
-        get_blacklist_response(&req).await,
+        "blocklist",
+        get_blocklist_response(&req).await,
         &format,
         f
     );

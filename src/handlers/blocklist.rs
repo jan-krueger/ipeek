@@ -1,44 +1,44 @@
 use crate::config::DNS_RESOLVER;
 use crate::format_middleware::Format;
-use crate::models::BlacklistReason::Unknown;
-use crate::models::{BlacklistEntry, BlacklistReason, BlacklistRecord};
+use crate::models::BlocklistReason::Unknown;
+use crate::models::{BlocklistEntry, BlocklistReason, BlocklistRecord};
 use crate::util::{format_response, get_ip};
 use actix_web::{HttpMessage, HttpRequest, HttpResponse};
 use std::collections::HashMap;
 use std::net::IpAddr;
 
-const BLACKLISTS: &[&str] = &[
+const BLOCKLISTS: &[&str] = &[
     "zen.spamhaus.org",
     "bl.spamcop.net",
     "b.barracudacentral.org",
 ];
 
-pub async fn blacklist_handler(req: HttpRequest) -> HttpResponse {
+pub async fn blocklist_handler(req: HttpRequest) -> HttpResponse {
     format_response(
         req.extensions().get::<Format>().unwrap(),
-        &get_blacklist_response(&req).await,
+        &get_blocklist_response(&req).await,
         false,
     )
 }
 
-pub async fn get_blacklist_response(req: &HttpRequest) -> BlacklistRecord {
+pub async fn get_blocklist_response(req: &HttpRequest) -> BlocklistRecord {
     let ip = get_ip(&req);
-    get_blacklist(&ip).await
+    get_blocklist(&ip).await
 }
 
-pub async fn get_blacklist(ip: &IpAddr) -> BlacklistRecord {
-    let listed_info = check_blacklists(ip).await;
+pub async fn get_blocklist(ip: &IpAddr) -> BlocklistRecord {
+    let listed_info = check_blocklists(ip).await;
 
-    BlacklistRecord {
+    BlocklistRecord {
         ip: ip.to_string(),
-        blacklisted: !listed_info.is_empty(),
+        blocked: !listed_info.is_empty(),
         listed_in: listed_info,
     }
 }
 
-pub async fn check_blacklists(ip: &IpAddr) -> Vec<BlacklistEntry> {
+pub async fn check_blocklists(ip: &IpAddr) -> Vec<BlocklistEntry> {
     let mut tasks = Vec::new();
-    let mut listed_in: Vec<BlacklistEntry> = Vec::new();
+    let mut listed_in: Vec<BlocklistEntry> = Vec::new();
 
     if let IpAddr::V4(addr) = ip {
         let reversed_ip = addr
@@ -49,7 +49,7 @@ pub async fn check_blacklists(ip: &IpAddr) -> Vec<BlacklistEntry> {
             .collect::<Vec<_>>()
             .join(".");
 
-        for &dnsbl in BLACKLISTS {
+        for &dnsbl in BLOCKLISTS {
             let query = format!("{}.{}", reversed_ip, dnsbl);
 
             tasks.push(tokio::spawn(async move {
@@ -60,7 +60,7 @@ pub async fn check_blacklists(ip: &IpAddr) -> Vec<BlacklistEntry> {
         for task in tasks {
             if let Ok((dnsbl, Some(response))) = task.await {
                 if let Some(addr) = response.iter().next() {
-                    let reason = BlacklistReason::from(
+                    let reason = BlocklistReason::from(
                         dnsbl.to_string().as_str(),
                         addr.to_string().as_str(),
                     );
@@ -69,7 +69,7 @@ pub async fn check_blacklists(ip: &IpAddr) -> Vec<BlacklistEntry> {
                         continue;
                     }
 
-                    listed_in.push(BlacklistEntry {
+                    listed_in.push(BlocklistEntry {
                         dnsbl: dnsbl.to_string(),
                         reason,
                     });
@@ -81,30 +81,30 @@ pub async fn check_blacklists(ip: &IpAddr) -> Vec<BlacklistEntry> {
     listed_in
 }
 
-impl BlacklistReason {
+impl BlocklistReason {
     pub fn from(provider: &str, response: &str) -> Self {
-        let mappings: HashMap<&str, HashMap<&str, BlacklistReason>> = HashMap::from([
+        let mappings: HashMap<&str, HashMap<&str, BlocklistReason>> = HashMap::from([
             (
                 "zen.spamhaus.org",
                 HashMap::from([
-                    ("127.0.0.2", BlacklistReason::SpamSource),
-                    ("127.0.0.3", BlacklistReason::SpamSupport),
-                    ("127.0.0.4", BlacklistReason::ExploitedOrMalicious),
-                    ("127.0.0.10", BlacklistReason::DynamicResidential),
+                    ("127.0.0.2", BlocklistReason::SpamSource),
+                    ("127.0.0.3", BlocklistReason::SpamSupport),
+                    ("127.0.0.4", BlocklistReason::ExploitedOrMalicious),
+                    ("127.0.0.10", BlocklistReason::DynamicResidential),
                 ]),
             ),
             (
                 "bl.spamcop.net",
                 HashMap::from([
-                    ("127.0.0.2", BlacklistReason::SpamSource),
-                    ("127.0.0.4", BlacklistReason::ExploitedOrMalicious),
+                    ("127.0.0.2", BlocklistReason::SpamSource),
+                    ("127.0.0.4", BlocklistReason::ExploitedOrMalicious),
                 ]),
             ),
             (
                 "b.barracudacentral.org",
                 HashMap::from([
-                    ("127.0.0.2", BlacklistReason::SpamSource),
-                    ("127.0.0.10", BlacklistReason::DynamicResidential),
+                    ("127.0.0.2", BlocklistReason::SpamSource),
+                    ("127.0.0.10", BlocklistReason::DynamicResidential),
                 ]),
             ),
         ]);
@@ -113,6 +113,6 @@ impl BlacklistReason {
             .get(provider)
             .and_then(|map| map.get(response))
             .cloned()
-            .unwrap_or(BlacklistReason::Unknown)
+            .unwrap_or(BlocklistReason::Unknown)
     }
 }

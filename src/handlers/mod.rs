@@ -1,6 +1,6 @@
 pub mod all;
 pub mod asn;
-mod blacklist;
+mod blocklist;
 pub mod city;
 pub mod country;
 pub mod country_code;
@@ -31,7 +31,7 @@ pub fn init_routes(cfg: &mut web::ServiceConfig) {
             .route("/city", web::get().to(city::city_handler))
             .route("/region", web::get().to(region::region_handler))
             .route("/asn", web::get().to(asn::asn_handler))
-            .route("/blacklist", web::get().to(blacklist::blacklist_handler))
+            .route("/blocklist", web::get().to(blocklist::blocklist_handler))
             .route("/all", web::get().to(all::all_handler))
             .route("/docs", web::get().to(docs::docs_handler)),
     );

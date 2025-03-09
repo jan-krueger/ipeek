@@ -1,4 +1,4 @@
-use crate::models::BlacklistReason::Unknown;
+use crate::models::BlocklistReason::Unknown;
 use serde::{Deserialize, Serialize};
 use yaserde_derive::YaSerialize;
 
@@ -19,13 +19,13 @@ pub struct AllResponse {
     pub region: String,
     pub city: String,
     pub asn: AsnRecord,
-    pub blacklist: BlacklistRecord,
+    pub blocklist: BlocklistRecord,
 }
 
 impl ToPlainText for AllResponse {
     fn to_plain_text(&self) -> String {
         format!(
-            "IP: {}\nHostname: {}\nCountry: {} ({})\nRegion: {}\nCity: {}\nASN: {}\nBlacklist: {}",
+            "IP: {}\nHostname: {}\nCountry: {} ({})\nRegion: {}\nCity: {}\nASN: {}\nBlocklist: {}",
             self.ip,
             self.reverse_dns,
             self.country,
@@ -33,7 +33,7 @@ impl ToPlainText for AllResponse {
             self.region,
             self.city,
             self.asn.to_plain_text(),
-            self.blacklist.to_plain_text(),
+            self.blocklist.to_plain_text(),
         )
     }
 }
@@ -48,9 +48,8 @@ pub struct CsvInfoEntry {
     pub city: String,
     pub asn: u32,
     pub aso: String,
-    pub blacklist_ip: String,
-    pub blacklisted: bool,
-    pub blacklist_listed_in: String,
+    pub blocked: bool,
+    pub blocklist_listed_in: String,
 }
 
 impl ToCsv<CsvInfoEntry> for AllResponse {
@@ -69,10 +68,9 @@ impl ToCsv<CsvInfoEntry> for AllResponse {
                 .clone()
                 .unwrap_or("".to_string())
                 .clone(),
-            blacklist_ip: self.blacklist.ip.clone(),
-            blacklisted: self.blacklist.blacklisted,
-            blacklist_listed_in: self
-                .blacklist
+            blocked: self.blocklist.blocked,
+            blocklist_listed_in: self
+                .blocklist
                 .listed_in
                 .clone()
                 .into_iter()
@@ -126,7 +124,7 @@ impl ToCsv<SimpleResponse> for SimpleResponse {
 }
 
 #[derive(Serialize, Debug, Clone, PartialEq, YaSerialize)]
-pub enum BlacklistReason {
+pub enum BlocklistReason {
     SpamSource,
     SpamSupport,
     ExploitedOrMalicious,
@@ -135,26 +133,26 @@ pub enum BlacklistReason {
 }
 
 #[derive(Serialize, YaSerialize)]
-pub struct BlacklistRecord {
+pub struct BlocklistRecord {
     pub ip: String,
-    pub blacklisted: bool,
-    pub listed_in: Vec<BlacklistEntry>,
+    pub blocked: bool,
+    pub listed_in: Vec<BlocklistEntry>,
 }
 #[derive(Serialize, YaSerialize, Clone)]
-pub struct BlacklistEntry {
+pub struct BlocklistEntry {
     pub dnsbl: String,
-    pub reason: BlacklistReason,
+    pub reason: BlocklistReason,
 }
 
-impl ToPlainText for BlacklistRecord {
+impl ToPlainText for BlocklistRecord {
     fn to_plain_text(&self) -> String {
         let mut result = format!(
-            "IP: {}\nBlacklisted: {}",
+            "IP: {}\nBlocked: {}",
             self.ip,
-            if self.blacklisted { "yes" } else { "no" }
+            if self.blocked { "yes" } else { "no" }
         );
 
-        if self.blacklisted && !self.listed_in.is_empty() {
+        if self.blocked && !self.listed_in.is_empty() {
             result.push_str("\nLists:");
             for entry in &self.listed_in {
                 result.push_str(&format!("\n - {} ({:?})", entry.dnsbl, entry.reason));
@@ -166,21 +164,21 @@ impl ToPlainText for BlacklistRecord {
 }
 
 #[derive(Serialize)]
-pub struct CsvBlacklistEntry {
+pub struct BlocklistCsvEntry {
     pub ip: String,
     pub dnsbl: String,
-    pub reason: BlacklistReason,
+    pub reason: BlocklistReason,
 }
 
-impl ToCsv<CsvBlacklistEntry> for BlacklistRecord {
-    fn to_csv_entries(&self) -> Vec<CsvBlacklistEntry> {
+impl ToCsv<BlocklistCsvEntry> for BlocklistRecord {
+    fn to_csv_entries(&self) -> Vec<BlocklistCsvEntry> {
         self.listed_in
             .iter()
             .filter_map(|entry| {
                 if entry.reason == Unknown {
                     None
                 } else {
-                    Some(CsvBlacklistEntry {
+                    Some(BlocklistCsvEntry {
                         ip: self.ip.clone(),
                         dnsbl: entry.dnsbl.clone(),
                         reason: entry.reason.clone(),
