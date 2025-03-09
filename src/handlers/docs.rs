@@ -43,18 +43,18 @@ pub async fn docs_handler(req: HttpRequest, state: web::Data<Arc<AppState>>) -> 
     let remote_host = info.reverse_dns.clone();
     let country_code = info.country.clone();
 
-    let (green, yellow, magenta, red, cyan, underline, reset, bold) = if is_browser(&req) {
+    let (green, yellow, magenta, red, cyan, reset, bold, highlight) = if is_browser(&req) {
         ("", "", "", "", "", "", "", "")
     } else {
         (
-            "\x1b[32m",  // green
-            "\x1b[33m",  // yellow
-            "\x1b[35m",  // magenta
-            "\x1b[31m",  // red
-            " \x1b[36m", // cyan
-            "\x1b[4m",   // underline
-            "\x1b[0m",   // reset
-            "\x1b[1m",   // bold
+            "\x1b[32m",        // green
+            "\x1b[33m",        // yellow
+            "\x1b[35m",        // magenta
+            "\x1b[31m",        // red
+            "\x1b[36m",        // cyan
+            "\x1b[0m",         // reset
+            "\x1b[1m",         // bold
+            "\x1b[33m\x1b[1m", // yellow + bold
         )
     };
 
@@ -85,18 +85,22 @@ Country:           {yellow}{country_code}{reset}
 By default, responses are returned as plain text.
 You can request different formats by appending the desired extension to the endpoint URL:
 
-  - {yellow}.json{reset}     → Returns data in JSON format
-  - {yellow}.xml{reset}      → Returns data in XML format
-  - {yellow}.csv{reset}      → Returns data in CSV format
-  - {yellow}.yaml{reset}     → Returns data in YAML format
-  - {yellow}.msgpack{reset}  → Returns data in MessagePack (binary) format
+  - {highlight}.json{reset}     → Returns data in JSON format
+  - {highlight}.xml{reset}      → Returns data in XML format
+  - {highlight}.csv{reset}      → Returns data in CSV format
+  - {highlight}.yaml{reset}     → Returns data in YAML format
+  - {highlight}.msgpack{reset}  → Returns data in MessagePack (binary) format
 
 {magenta}{bold}Examples:{reset}
   {red}curl {bold}{cyan}ipeek.io/ip{reset}          # Plain text
-  {red}curl {bold}{cyan}ipeek.io/ip{underline}.json{reset}     # JSON
-  {red}curl {bold}{cyan}ipeek.io/ip{underline}.xml{reset}      # XML
-  {red}curl {bold}{cyan}ipeek.io/ip{underline}.csv{reset}      # CSV
+  {red}curl {bold}{cyan}ipeek.io/ip{highlight}.json{reset}     # JSON
+  {red}curl {bold}{cyan}ipeek.io/ip{highlight}.xml{reset}      # XML
+  {red}curl {bold}{cyan}ipeek.io/ip{highlight}.csv{reset}      # CSV
 
+{magenta}{bold}IPv4/IPv6 Forcing{reset}
+-------------------------------------
+You can force an IPv4 connection by using the subdomain {highlight}4.{reset}{cyan}ipeek.io{reset}
+and force an IPv6 connection by using {highlight}6.{reset}{cyan}ipeek.io{reset}.
 
 {magenta}{bold}Enpoints{reset}
 -------------------------------------
@@ -109,9 +113,9 @@ You can request different formats by appending the desired extension to the endp
         yellow = yellow,
         magenta = magenta,
         cyan = cyan,
-        underline = underline,
         reset = reset,
         bold = bold,
+        highlight = highlight
     );
 
     HttpResponse::Ok().content_type("text/plain").body(doc)
