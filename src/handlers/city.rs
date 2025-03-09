@@ -3,8 +3,8 @@ use std::sync::Arc;
 use actix_web::{web, HttpRequest, HttpResponse};
 use maxminddb::{geoip2, Reader};
 use crate::AppState;
-use crate::models::{SimpleResponse, QueryOptions};
-use crate::util::{format_response, get_ip};
+use crate::models::{SimpleResponse};
+use crate::util::{format_response, get_ip, QueryOptions};
 
 pub async fn city_handler(
     req: HttpRequest,

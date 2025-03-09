@@ -1,11 +1,13 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use actix_web::{web, HttpRequest, HttpResponse};
 use comfy_table::{Attribute, Cell, Color, Table};
 use crate::AppState;
-use crate::util::{get_info, is_browser};
+use crate::util::{get_info, get_ip, is_browser};
 
 use crate::handlers::asn::get_asn_info;
-use crate::models::{AsnRecord, Info};
+use crate::handlers::blacklist::check_blacklists;
+use crate::models::{AsnRecord, BlacklistReason, Info};
 
 pub async fn doc_handler(
     req: HttpRequest,
@@ -97,7 +99,7 @@ You can specify a different format using the query parameter 'format':
         reset = reset,
         bold = bold,
         ip_address = ip_address,
-        curl_request_table = curl_request_table(&info, get_asn_info(&req, &state.asn_db), is_browser(&req)),
+        curl_request_table = curl_request_table(&info, get_asn_info(&req, &state.asn_db), check_blacklists(get_ip(&req)).await, is_browser(&req)),
     );
 
 
@@ -106,7 +108,7 @@ You can specify a different format using the query parameter 'format':
         .body(doc)
 }
 
-fn curl_request_table(info: &Info, asn: AsnRecord, is_browser: bool) -> String {
+fn curl_request_table(info: &Info, asn: AsnRecord, blacklist_results: HashMap<String, BlacklistReason>, is_browser: bool) -> String {
     let mut table = Table::new();
 
     table
@@ -159,6 +161,29 @@ fn curl_request_table(info: &Info, asn: AsnRecord, is_browser: bool) -> String {
                 info.ip, info.reverse_dns, info.country, info.region, info.city
             ))
                 .fg(Color::Yellow),
+        ])
+        .add_row(vec![
+            Cell::new("curl ipeek.io/blacklist").fg(Color::Cyan),
+            Cell::new("IP: <ip>\nBlacklisted: <yes/no>\nLists:\n - <blacklist1> (<reason>)\n - <blacklist2> (<reason>)").fg(Color::Yellow),
+        ])
+        .add_row(vec![
+            Cell::new("curl ipeek.io/blacklist").fg(Color::Cyan),
+            Cell::new(&format!(
+                "IP: {}\nBlacklisted: {}{}",
+                info.ip,
+                if !blacklist_results.is_empty() { "yes" } else { "no" },
+                if !blacklist_results.is_empty() {
+                    let lists = blacklist_results
+                        .iter()
+                        .filter(|(_, reason)| **reason != BlacklistReason::Unknown)
+                        .map(|(dnsbl, reason)| format!("\n - {} ({:?})", dnsbl, reason))
+                        .collect::<Vec<_>>()
+                        .join("");
+                    format!("\nLists:{}", lists)
+                } else {
+                    String::new()
+                }
+            )).fg(Color::Yellow),
         ])
         .add_row(vec![
             Cell::new("curl ipeek.io/docs").fg(Color::Cyan),

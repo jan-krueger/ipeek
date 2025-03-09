@@ -1,6 +1,6 @@
 use actix_web::{web, HttpRequest, HttpResponse};
-use crate::models::{SimpleResponse, QueryOptions};
-use crate::util::{format_response, get_ip};
+use crate::models::{SimpleResponse};
+use crate::util::{format_response, get_ip, QueryOptions};
 
 pub async fn ip_handler(
     req: HttpRequest,

@@ -1,16 +1,17 @@
 use actix_web::{HttpRequest, HttpResponse};
 use maxminddb::Reader;
-use serde::Serialize;
-use crate::models::{Info, ToPlainText};
+use serde::{Deserialize, Serialize};
+use crate::models::{Info, ToCsv, ToPlainText};
 use std::net::{IpAddr, Ipv4Addr};
 use crate::handlers::city::get_city;
 use crate::handlers::country::get_country;
 use crate::handlers::region::get_region;
 use crate::handlers::reverse_dns::get_reverse_dns;
 
-pub fn format_response<T>(format: Option<&str>, data: &T) -> HttpResponse
+pub fn format_response<T, U>(format: Option<&str>, data: &T) -> HttpResponse
 where
-    T: Serialize + ToPlainText,
+    T: Serialize + ToPlainText + ToCsv<U>,
+    U: Serialize,
 {
     match format {
         Some("json") => {
@@ -28,18 +29,21 @@ where
         },
         Some("csv") => {
             let mut wtr = csv::Writer::from_writer(vec![]);
-            if let Err(err) = wtr.serialize(data) {
-                return HttpResponse::InternalServerError().body(err.to_string());
+            if let Err(err) = data.to_csv_entries().iter().try_for_each(|entry| wtr.serialize(entry)) {
+                return HttpResponse::InternalServerError().body(format!("CSV serialization error: {}", err));
             }
+
             if let Err(err) = wtr.flush() {
-                return HttpResponse::InternalServerError().body(err.to_string());
+                return HttpResponse::InternalServerError().body(format!("CSV flush error: {}", err));
             }
+
             let csv_data = String::from_utf8(wtr.into_inner().unwrap_or_default())
-                .unwrap_or_default();
+                .unwrap_or_else(|_| "CSV encoding error".to_string());
+
             HttpResponse::Ok()
                 .content_type("text/csv")
                 .body(csv_data)
-        },
+        }
         Some("yaml") => {
             match serde_yml::to_string(data) {
                 Ok(yaml_str) => HttpResponse::Ok()
@@ -61,6 +65,7 @@ where
             .body(format!("{}\n", data.to_plain_text())),
     }
 }
+
 pub fn get_ip(req: &HttpRequest) -> IpAddr {
     if let Some(forwarded_for) = req.headers().get("X-Forwarded-For") {
         if let Ok(forwarded_for_str) = forwarded_for.to_str() {
@@ -123,4 +128,10 @@ pub fn is_browser(req: &HttpRequest) -> bool {
         }
     }
     false
+}
+
+
+#[derive(Deserialize)]
+pub struct QueryOptions {
+    pub format: Option<String>,
 }

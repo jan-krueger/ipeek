@@ -1,8 +1,7 @@
 use std::sync::Arc;
 use actix_web::{web, HttpRequest, HttpResponse};
 use crate::AppState;
-use crate::models::{QueryOptions};
-use crate::util::{format_response, get_info};
+use crate::util::{format_response, get_info, QueryOptions};
 
 pub async fn all_handler(
     req: HttpRequest,

@@ -2,7 +2,7 @@ use std::sync::Arc;
 use actix_web::{web, HttpRequest, HttpResponse};
 use crate::AppState;
 use crate::handlers::{doc, ip};
-use crate::models::QueryOptions;
+use crate::util::QueryOptions;
 use crate::util::is_browser;
 
 pub async fn root_handler(

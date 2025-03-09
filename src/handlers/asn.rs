@@ -3,8 +3,8 @@ use std::sync::Arc;
 use actix_web::{web, HttpRequest, HttpResponse};
 use maxminddb::Reader;
 use crate::AppState;
-use crate::models::{AsnRecord, AsnResponse, QueryOptions};
-use crate::util::{format_response, get_ip};
+use crate::models::{AsnRecord, AsnResponse};
+use crate::util::{format_response, get_ip, QueryOptions};
 
 pub async fn asn_handler(
     req: HttpRequest,
