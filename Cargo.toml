@@ -18,4 +18,5 @@ trust-dns-resolver = "0.23.2"
 lazy_static = "1.5.0"
 comfy-table = "7"
 tracert = "0.8.0"
-quick-xml = { version = "0.37.2", features = ["serialize"] }
+yaserde = "0.12.0"
+yaserde_derive = "0.12.0"

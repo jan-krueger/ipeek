@@ -7,6 +7,7 @@ pub async fn ip_handler(req: HttpRequest) -> HttpResponse {
     format_response(
         req.extensions().get::<Format>().unwrap(),
         &get_ip_response(&req),
+        false,
     )
 }
 

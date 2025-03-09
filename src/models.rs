@@ -1,6 +1,6 @@
 use crate::models::BlacklistReason::Unknown;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use yaserde_derive::YaSerialize;
 
 pub trait ToPlainText {
     fn to_plain_text(&self) -> String;
@@ -10,21 +10,30 @@ pub trait ToCsv<T> {
     fn to_csv_entries(&self) -> Vec<T>;
 }
 
-#[derive(Serialize)]
-pub struct Info {
+#[derive(Serialize, YaSerialize)]
+pub struct AllResponse {
     pub ip: String,
     pub reverse_dns: String,
     pub country: String,
     pub country_code: String,
-    pub city: String,
     pub region: String,
+    pub city: String,
+    pub asn: AsnRecord,
+    pub blacklist: BlacklistRecord,
 }
 
-impl ToPlainText for Info {
+impl ToPlainText for AllResponse {
     fn to_plain_text(&self) -> String {
         format!(
-            "IP: {}\nHostname: {}\nCountry: {} ({})\nRegion: {}\nCity: {}",
-            self.ip, self.reverse_dns, self.country, self.country_code, self.region, self.city,
+            "IP: {}\nHostname: {}\nCountry: {} ({})\nRegion: {}\nCity: {}\nASN: {}\nBlacklist: {}",
+            self.ip,
+            self.reverse_dns,
+            self.country,
+            self.country_code,
+            self.region,
+            self.city,
+            self.asn.to_plain_text(),
+            self.blacklist.to_plain_text(),
         )
     }
 }
@@ -35,76 +44,69 @@ pub struct CsvInfoEntry {
     pub reverse_dns: String,
     pub country: String,
     pub country_code: String,
-    pub city: String,
     pub region: String,
+    pub city: String,
+    pub asn: u32,
+    pub aso: String,
+    pub blacklist_ip: String,
+    pub blacklisted: bool,
+    pub blacklist_listed_in: String,
 }
 
-impl ToCsv<CsvInfoEntry> for Info {
+impl ToCsv<CsvInfoEntry> for AllResponse {
     fn to_csv_entries(&self) -> Vec<CsvInfoEntry> {
         vec![CsvInfoEntry {
             ip: self.ip.clone(),
             reverse_dns: self.reverse_dns.clone(),
             country: self.country.clone(),
             country_code: self.country_code.clone(),
-            city: self.city.clone(),
             region: self.region.clone(),
+            city: self.city.clone(),
+            asn: self.asn.autonomous_system_organization.unwrap_or(0),
+            aso: self
+                .asn
+                .autonomous_system_number
+                .clone()
+                .unwrap_or("".to_string())
+                .clone(),
+            blacklist_ip: self.blacklist.ip.clone(),
+            blacklisted: self.blacklist.blacklisted,
+            blacklist_listed_in: self
+                .blacklist
+                .listed_in
+                .clone()
+                .into_iter()
+                .map(|entry| format!("{} ({:?})", entry.dnsbl, entry.reason))
+                .collect::<Vec<String>>()
+                .join(":"),
         }]
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone, YaSerialize)]
 pub struct AsnRecord {
-    #[serde(rename = "autonomous_system_number")]
-    pub autonomous_system_number: Option<u32>,
-    #[serde(rename = "autonomous_system_organization")]
-    pub autonomous_system_organization: Option<String>,
+    pub autonomous_system_organization: Option<u32>,
+    pub autonomous_system_number: Option<String>,
 }
 
-#[derive(Serialize)]
-pub struct CsvAsnEntry {
-    pub autonomous_system_number: Option<u32>,
-    pub autonomous_system_organization: Option<String>,
-}
-
-impl ToCsv<CsvAsnEntry> for AsnRecord {
-    fn to_csv_entries(&self) -> Vec<CsvAsnEntry> {
-        vec![CsvAsnEntry {
-            autonomous_system_number: self.autonomous_system_number,
-            autonomous_system_organization: self.autonomous_system_organization.clone(),
-        }]
-    }
-}
-
-#[derive(Serialize)]
-pub struct AsnResponse {
-    pub autonomous_system_number: Option<u32>,
-    pub autonomous_system_organization: Option<String>,
-}
-
-impl ToPlainText for AsnResponse {
+impl ToPlainText for AsnRecord {
     fn to_plain_text(&self) -> String {
         format!(
-            "ASN: {}\nOrganization: {}",
+            "ASN: {:?}\nOrganization: {}",
+            self.autonomous_system_organization.unwrap_or(0),
             self.autonomous_system_number
-                .map(|n| n.to_string())
-                .unwrap_or_default(),
-            self.autonomous_system_organization
                 .clone()
-                .unwrap_or_default()
+                .unwrap_or_else(|| "".to_string())
         )
     }
 }
-
-impl ToCsv<CsvAsnEntry> for AsnResponse {
-    fn to_csv_entries(&self) -> Vec<CsvAsnEntry> {
-        vec![CsvAsnEntry {
-            autonomous_system_number: self.autonomous_system_number,
-            autonomous_system_organization: self.autonomous_system_organization.clone(),
-        }]
+impl ToCsv<AsnRecord> for AsnRecord {
+    fn to_csv_entries(&self) -> Vec<AsnRecord> {
+        vec![self.clone()]
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, YaSerialize)]
 pub struct SimpleResponse {
     pub value: String,
 }
@@ -123,7 +125,7 @@ impl ToCsv<SimpleResponse> for SimpleResponse {
     }
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Debug, Clone, PartialEq, YaSerialize)]
 pub enum BlacklistReason {
     SpamSource,
     SpamSupport,
@@ -132,14 +134,19 @@ pub enum BlacklistReason {
     Unknown,
 }
 
-#[derive(Serialize)]
-pub struct BlacklistResponse {
+#[derive(Serialize, YaSerialize)]
+pub struct BlacklistRecord {
     pub ip: String,
     pub blacklisted: bool,
-    pub listed_in: HashMap<String, BlacklistReason>,
+    pub listed_in: Vec<BlacklistEntry>,
+}
+#[derive(Serialize, YaSerialize, Clone)]
+pub struct BlacklistEntry {
+    pub dnsbl: String,
+    pub reason: BlacklistReason,
 }
 
-impl ToPlainText for BlacklistResponse {
+impl ToPlainText for BlacklistRecord {
     fn to_plain_text(&self) -> String {
         let mut result = format!(
             "IP: {}\nBlacklisted: {}",
@@ -149,8 +156,8 @@ impl ToPlainText for BlacklistResponse {
 
         if self.blacklisted && !self.listed_in.is_empty() {
             result.push_str("\nLists:");
-            for (dnsbl, reason) in &self.listed_in {
-                result.push_str(&format!("\n - {} ({:?})", dnsbl, reason));
+            for entry in &self.listed_in {
+                result.push_str(&format!("\n - {} ({:?})", entry.dnsbl, entry.reason));
             }
         }
 
@@ -165,18 +172,18 @@ pub struct CsvBlacklistEntry {
     pub reason: BlacklistReason,
 }
 
-impl ToCsv<CsvBlacklistEntry> for BlacklistResponse {
+impl ToCsv<CsvBlacklistEntry> for BlacklistRecord {
     fn to_csv_entries(&self) -> Vec<CsvBlacklistEntry> {
         self.listed_in
             .iter()
-            .filter_map(|(dnsbl, reason)| {
-                if reason == &Unknown {
+            .filter_map(|entry| {
+                if entry.reason == Unknown {
                     None
                 } else {
                     Some(CsvBlacklistEntry {
                         ip: self.ip.clone(),
-                        dnsbl: dnsbl.clone(),
-                        reason: reason.clone(),
+                        dnsbl: entry.dnsbl.clone(),
+                        reason: entry.reason.clone(),
                     })
                 }
             })

@@ -1,7 +1,7 @@
 use crate::config::DNS_RESOLVER;
 use crate::format_middleware::Format;
 use crate::models::BlacklistReason::Unknown;
-use crate::models::{BlacklistReason, BlacklistResponse};
+use crate::models::{BlacklistEntry, BlacklistReason, BlacklistRecord};
 use crate::util::{format_response, get_ip};
 use actix_web::{HttpMessage, HttpRequest, HttpResponse};
 use std::collections::HashMap;
@@ -17,23 +17,28 @@ pub async fn blacklist_handler(req: HttpRequest) -> HttpResponse {
     format_response(
         req.extensions().get::<Format>().unwrap(),
         &get_blacklist_response(&req).await,
+        false,
     )
 }
 
-pub async fn get_blacklist_response(req: &HttpRequest) -> BlacklistResponse {
+pub async fn get_blacklist_response(req: &HttpRequest) -> BlacklistRecord {
     let ip = get_ip(&req);
+    get_blacklist(&ip).await
+}
+
+pub async fn get_blacklist(ip: &IpAddr) -> BlacklistRecord {
     let listed_info = check_blacklists(ip).await;
 
-    BlacklistResponse {
+    BlacklistRecord {
         ip: ip.to_string(),
         blacklisted: !listed_info.is_empty(),
         listed_in: listed_info,
     }
 }
 
-pub async fn check_blacklists(ip: IpAddr) -> HashMap<String, BlacklistReason> {
+pub async fn check_blacklists(ip: &IpAddr) -> Vec<BlacklistEntry> {
     let mut tasks = Vec::new();
-    let mut listed_in = HashMap::new();
+    let mut listed_in: Vec<BlacklistEntry> = Vec::new();
 
     if let IpAddr::V4(addr) = ip {
         let reversed_ip = addr
@@ -64,7 +69,10 @@ pub async fn check_blacklists(ip: IpAddr) -> HashMap<String, BlacklistReason> {
                         continue;
                     }
 
-                    listed_in.insert(dnsbl.to_string(), reason);
+                    listed_in.push(BlacklistEntry {
+                        dnsbl: "".to_string(),
+                        reason,
+                    });
                 }
             }
         }

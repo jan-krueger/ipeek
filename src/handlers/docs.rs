@@ -1,4 +1,5 @@
 use crate::format_middleware::Format;
+use crate::handlers::all::get_all_response;
 use crate::handlers::asn::get_asn_response;
 use crate::handlers::blacklist::get_blacklist_response;
 use crate::handlers::city::get_city_response;
@@ -8,7 +9,7 @@ use crate::handlers::ip::get_ip_response;
 use crate::handlers::region::get_region_response;
 use crate::handlers::reverse_dns::get_reverse_dns_response;
 use crate::models::{ToCsv, ToPlainText};
-use crate::util::{format_response, get_info, is_browser};
+use crate::util::{format_response, is_browser};
 use crate::AppState;
 use actix_web::body::MessageBody;
 use actix_web::{web, HttpMessage, HttpRequest, HttpResponse};
@@ -37,11 +38,11 @@ fn endpoint_url(endpoint: &str, format: &Format) -> String {
 }
 
 pub async fn docs_handler(req: HttpRequest, state: web::Data<Arc<AppState>>) -> HttpResponse {
-    let info = get_info(&req, &state.geo_db).await;
+    let info = get_all_response(&req, &state).await;
 
-    let ip_address = info.ip.clone();
-    let remote_host = info.reverse_dns.clone();
-    let country_code = info.country.clone();
+    let ip_address = info.ip;
+    let remote_host = info.reverse_dns;
+    let country_code = info.country;
 
     let (green, yellow, magenta, red, cyan, reset, bold, highlight) = if is_browser(&req) {
         ("", "", "", "", "", "", "", "")
@@ -168,7 +169,6 @@ async fn curl_request_table(req: HttpRequest, state: web::Data<Arc<AppState>>) -
         &format,
         f
     );
-    add_row!(table, "city", get_city_response(&req, &state), &format, f);
     add_row!(
         table,
         "region",
@@ -176,11 +176,12 @@ async fn curl_request_table(req: HttpRequest, state: web::Data<Arc<AppState>>) -
         &format,
         f
     );
+    add_row!(table, "city", get_city_response(&req, &state), &format, f);
     add_row!(table, "asn", get_asn_response(&req, &state), &format, f);
     add_row!(
         table,
         "all",
-        get_info(&req, &state.geo_db).await,
+        get_all_response(&req, &state).await,
         &format,
         f
     );
@@ -210,37 +211,29 @@ async fn curl_request_table(req: HttpRequest, state: web::Data<Arc<AppState>>) -
 
 fn f<T, U>(format: &Format, response: &T) -> String
 where
-    T: Serialize + ToPlainText + ToCsv<U>,
+    T: Serialize + ToPlainText + ToCsv<U> + yaserde::YaSerialize,
     U: Serialize,
 {
-    let http_response = format_response(format, response);
+    let http_response = format_response(format, response, true);
 
     match http_response.into_body().try_into_bytes() {
         Ok(bytes) => {
             if *format == Format::Msgpack {
-                let byte_string = bytes
-                    .iter()
-                    .map(|byte| format!("0x{:02X} ", byte))
-                    .collect::<String>();
-                return if byte_string.len() > 32 {
-                    format!("{}...", &byte_string[..32])
-                } else {
-                    byte_string
-                };
+                const BYTES_PER_LINE: usize = 8;
+                let lines: Vec<String> = bytes
+                    .chunks(BYTES_PER_LINE)
+                    .map(|chunk| {
+                        chunk
+                            .iter()
+                            .map(|byte| format!("0x{:02X} ", byte))
+                            .collect::<String>()
+                    })
+                    .collect();
+                return lines.join("\n");
             }
 
             let full_string = String::from_utf8_lossy(&bytes).to_string();
-            full_string
-                .lines()
-                .map(|line| {
-                    if line.len() > 64 {
-                        format!("{}...", &line[..64])
-                    } else {
-                        line.to_string()
-                    }
-                })
-                .collect::<Vec<_>>()
-                .join("\n")
+            full_string.lines().collect::<Vec<_>>().join("\n")
         }
         Err(_) => "<failed to extract response body>".to_string(),
     }

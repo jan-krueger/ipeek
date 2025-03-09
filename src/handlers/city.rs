@@ -11,6 +11,7 @@ pub async fn city_handler(req: HttpRequest, state: web::Data<Arc<AppState>>) -> 
     format_response(
         req.extensions().get::<Format>().unwrap(),
         &get_city_response(&req, &state),
+        false,
     )
 }
 

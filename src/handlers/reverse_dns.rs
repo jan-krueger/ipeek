@@ -9,6 +9,7 @@ pub async fn reverse_dns_handler(req: HttpRequest) -> HttpResponse {
     format_response(
         req.extensions().get::<Format>().unwrap(),
         &get_reverse_dns_response(&req).await,
+        false,
     )
 }
 pub async fn get_reverse_dns(ip: IpAddr) -> Option<String> {

@@ -1,33 +1,38 @@
 use crate::format_middleware::Format;
-use crate::handlers::city::get_city;
-use crate::handlers::country::get_country;
-use crate::handlers::country_code::get_country_code;
-use crate::handlers::region::get_region;
-use crate::handlers::reverse_dns::get_reverse_dns;
-use crate::models::{Info, ToCsv, ToPlainText};
+use crate::models::{ToCsv, ToPlainText};
 use actix_web::{HttpRequest, HttpResponse};
-use maxminddb::Reader;
 use serde::Serialize;
 use std::net::{IpAddr, Ipv4Addr};
 
-pub fn format_response<T, U>(format: &Format, data: &T) -> HttpResponse
+pub fn format_response<T, U>(format: &Format, data: &T, pretty: bool) -> HttpResponse
 where
-    T: Serialize + ToPlainText + ToCsv<U>,
+    T: Serialize + ToPlainText + ToCsv<U> + yaserde::YaSerialize,
     U: Serialize,
 {
     match format {
         Format::Json => {
-            let json_str = serde_json::to_string(data).unwrap_or_else(|err| err.to_string());
+            let json_str = if pretty {
+                serde_json::to_string_pretty(data).unwrap_or_else(|_| "{}".to_string())
+            } else {
+                serde_json::to_string(data).unwrap_or_else(|_| "{}".to_string())
+            };
+
             HttpResponse::Ok()
                 .content_type("application/json")
                 .body(format!("{}\n", json_str))
         }
-        Format::Xml => match quick_xml::se::to_string(data) {
-            Ok(xml_str) => HttpResponse::Ok()
-                .content_type("application/xml")
-                .body(format!("{}\n", xml_str)),
-            Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
-        },
+        Format::Xml => {
+            let yaserde_cfg = yaserde::ser::Config {
+                perform_indent: pretty,
+                ..Default::default()
+            };
+            match yaserde::ser::to_string_with_config(data, &yaserde_cfg) {
+                Ok(xml_str) => HttpResponse::Ok()
+                    .content_type("application/xml")
+                    .body(format!("{}\n", xml_str)),
+                Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
+            }
+        }
         Format::Csv => {
             let mut wtr = csv::Writer::from_writer(vec![]);
             if let Err(err) = data
@@ -91,24 +96,6 @@ pub fn get_ip(req: &HttpRequest) -> IpAddr {
         .realip_remote_addr()
         .and_then(|ip| ip.parse::<IpAddr>().ok())
         .unwrap_or(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)))
-}
-
-pub async fn get_info(req: &HttpRequest, geo_db: &Reader<Vec<u8>>) -> Info {
-    let ip: IpAddr = get_ip(req);
-    let reverse_dns = get_reverse_dns(ip).await.unwrap_or_else(|| "".to_string());
-    let city = get_city(ip, geo_db).unwrap_or_else(|| "".to_string());
-    let country = get_country(ip, geo_db).unwrap_or_else(|| "".to_string());
-    let country_code = get_country_code(ip, geo_db).unwrap_or_else(|| "".to_string());
-    let region = get_region(ip, geo_db).unwrap_or_else(|| "".to_string());
-
-    Info {
-        ip: ip.to_string(),
-        reverse_dns,
-        country,
-        country_code,
-        city,
-        region,
-    }
 }
 
 static KNOWN_BROWSERS: [&str; 8] = [

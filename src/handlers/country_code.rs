@@ -14,6 +14,7 @@ pub async fn country_code_handler(
     format_response(
         req.extensions().get::<Format>().unwrap(),
         &get_country_code_response(&req, &state),
+        false,
     )
 }
 
