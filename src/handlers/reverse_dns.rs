@@ -14,6 +14,8 @@ pub async fn get_reverse_dns(ip: IpAddr) -> Option<String> {
     Some(ptr_lookup.iter().next()?.to_string())
 }
 pub async fn get_reverse_dns_response(req: &HttpRequest) -> SimpleResponse {
-    let result = get_reverse_dns(get_ip(&req)).await.unwrap();
-    SimpleResponse { value: result }
+    match get_reverse_dns(get_ip(&req)).await {
+        Some(result) => { SimpleResponse { value: result } },
+        None => { SimpleResponse { value: "".to_string() } }
+    }
 }
