@@ -22,7 +22,7 @@ where
                 .content_type("application/json")
                 .body(format!("{}\n", json_str))
         },
-        "xml" => match serde_xml_rs::to_string(data) {
+        "xml" => match quick_xml::se::to_string(data) {
             Ok(xml_str) => HttpResponse::Ok()
                 .content_type("application/xml")
                 .body(format!("{}\n", xml_str)),
