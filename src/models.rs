@@ -151,9 +151,6 @@ impl ToPlainText for BlacklistResponse {
         if self.blacklisted && !self.listed_in.is_empty() {
             result.push_str("\nLists:");
             for (dnsbl, reason) in &self.listed_in {
-                if reason == &Unknown {
-                    continue;
-                }
                 result.push_str(&format!("\n - {} ({:?})", dnsbl, reason));
             }
         }

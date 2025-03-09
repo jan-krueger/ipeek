@@ -4,6 +4,7 @@ use crate::util::{format_response, get_ip};
 use actix_web::{HttpMessage, HttpRequest, HttpResponse};
 use std::collections::HashMap;
 use std::net::IpAddr;
+use crate::models::BlacklistReason::Unknown;
 
 const BLACKLISTS: &[&str] = &[
     "zen.spamhaus.org",
@@ -57,6 +58,11 @@ pub async fn check_blacklists(ip: IpAddr) -> HashMap<String, BlacklistReason> {
                         dnsbl.to_string().as_str(),
                         addr.to_string().as_str()
                     );
+
+                    if reason == Unknown {
+                        continue;
+                    }
+
                     listed_in.insert(dnsbl.to_string(), reason);
                 }
             }
