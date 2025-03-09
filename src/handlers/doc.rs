@@ -54,29 +54,6 @@ IP Address:        {yellow}{ip_address}{reset}
 Remote Host:       {yellow}{remote_host}{reset}
 Country:           {yellow}{country_code}{reset}
 
-{magenta}{bold}Simple cURL API{reset}
----------------
-1) Return IP:
-   {cyan}$ curl http://ipeek.io/ip{reset}
-
-2) Return Reverse DNS:
-   {cyan}$ curl http://ipeek.io/reverse_dns{reset}
-
-3) Return Country:
-   {cyan}$ curl http://ipeek.io/country{reset}
-
-4) Return City:
-   {cyan}$ curl http://ipeek.io/city{reset}
-
-5) Return Region:
-   {cyan}$ curl http://ipeek.io/region{reset}
-
-6) Return ASN:
-   {cyan}$ curl http://ipeek.io/asn{reset}
-
-7) Return All Info:
-   {cyan}$ curl http://ipeek.io/all{reset}
-
 {magenta}{bold}Output Formats{reset}
 --------------
 By default, responses are returned as plain text.
@@ -133,6 +110,10 @@ fn curl_request_table(info: &Info, asn: AsnRecord, blacklist_results: HashMap<St
             Cell::new(&info.country).fg(Color::Yellow),
         ])
         .add_row(vec![
+            Cell::new("curl ipeek.io/country_code").fg(Color::Cyan),
+            Cell::new(&info.country_code).fg(Color::Yellow),
+        ])
+        .add_row(vec![
             Cell::new("curl ipeek.io/city").fg(Color::Cyan),
             Cell::new(&info.city).fg(Color::Yellow),
         ])
@@ -161,10 +142,6 @@ fn curl_request_table(info: &Info, asn: AsnRecord, blacklist_results: HashMap<St
                 info.ip, info.reverse_dns, info.country, info.region, info.city
             ))
                 .fg(Color::Yellow),
-        ])
-        .add_row(vec![
-            Cell::new("curl ipeek.io/blacklist").fg(Color::Cyan),
-            Cell::new("IP: <ip>\nBlacklisted: <yes/no>\nLists:\n - <blacklist1> (<reason>)\n - <blacklist2> (<reason>)").fg(Color::Yellow),
         ])
         .add_row(vec![
             Cell::new("curl ipeek.io/blacklist").fg(Color::Cyan),

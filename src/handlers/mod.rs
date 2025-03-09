@@ -8,6 +8,7 @@ pub mod asn;
 pub mod all;
 pub mod doc;
 mod blacklist;
+pub(crate) mod country_code;
 
 use actix_web::web;
 
@@ -17,6 +18,7 @@ pub fn init_routes(cfg: &mut web::ServiceConfig) {
         .route("/ip", web::get().to(ip::ip_handler))
         .route("/reverse_dns", web::get().to(reverse_dns::reverse_dns_handler))
         .route("/country", web::get().to(country::country_handler))
+        .route("/country_code", web::get().to(country_code::country_code_handler))
         .route("/city", web::get().to(city::city_handler))
         .route("/region", web::get().to(region::region_handler))
         .route("/asn", web::get().to(asn::asn_handler))

@@ -15,6 +15,7 @@ pub struct Info {
     pub ip: String,
     pub reverse_dns: String,
     pub country: String,
+    pub country_code: String,
     pub city: String,
     pub region: String,
 }
@@ -22,10 +23,11 @@ pub struct Info {
 impl ToPlainText for Info {
     fn to_plain_text(&self) -> String {
         format!(
-            "IP: {}\nHostname: {}\nCountry: {}\nRegion: {}\nCity: {}",
+            "IP: {}\nHostname: {}\nCountry: {} ({})\nRegion: {}\nCity: {}",
             self.ip,
             self.reverse_dns,
             self.country,
+            self.country_code,
             self.region,
             self.city,
         )
@@ -37,6 +39,7 @@ pub struct CsvInfoEntry {
     pub ip: String,
     pub reverse_dns: String,
     pub country: String,
+    pub country_code: String,
     pub city: String,
     pub region: String,
 }
@@ -47,6 +50,7 @@ impl ToCsv<CsvInfoEntry> for Info {
             ip: self.ip.clone(),
             reverse_dns: self.reverse_dns.clone(),
             country: self.country.clone(),
+            country_code: self.country_code.clone(),
             city: self.city.clone(),
             region: self.region.clone(),
         }]

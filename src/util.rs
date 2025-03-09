@@ -5,6 +5,7 @@ use crate::models::{Info, ToCsv, ToPlainText};
 use std::net::{IpAddr, Ipv4Addr};
 use crate::handlers::city::get_city;
 use crate::handlers::country::get_country;
+use crate::handlers::country_code::get_country_code;
 use crate::handlers::region::get_region;
 use crate::handlers::reverse_dns::get_reverse_dns;
 
@@ -98,12 +99,14 @@ pub async fn get_info(req: &HttpRequest, geo_db: &Reader<Vec<u8>>) -> Info {
     let reverse_dns = get_reverse_dns(ip).await.unwrap_or_else(|| "".to_string());
     let city = get_city(ip, geo_db).unwrap_or_else(|| "".to_string());
     let country = get_country(ip, geo_db).unwrap_or_else(|| "".to_string());
+    let country_code = get_country_code(ip, geo_db).unwrap_or_else(|| "".to_string());
     let region = get_region(ip, geo_db).unwrap_or_else(|| "".to_string());
 
     Info {
         ip: ip.to_string(),
         reverse_dns,
         country,
+        country_code,
         city,
         region,
     }
