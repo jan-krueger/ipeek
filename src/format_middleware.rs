@@ -1,3 +1,4 @@
+use crate::format_middleware::Format::Plain;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse};
 use actix_web::http::Uri;
 use actix_web::{dev, Error, HttpMessage};
@@ -45,12 +46,7 @@ where
 
     fn call(&self, mut req: ServiceRequest) -> Self::Future {
         let path = req.path();
-        let ext_str = Path::new(path)
-            .extension()
-            .and_then(|ext| ext.to_str())
-            .unwrap_or("plain");
-
-        let format = Format::from_str(ext_str).unwrap();
+        let (format, ext_str) = Format::from_path(path);
 
         let clean_path = path
             .strip_suffix(&format!(".{}", ext_str))
@@ -103,5 +99,26 @@ impl fmt::Display for Format {
             Format::Plain => "",
         };
         write!(f, "{}", s)
+    }
+}
+
+impl Format {
+    pub fn from_path(path: &str) -> (Format, &str) {
+        let file_name = match Path::new(path).file_name().and_then(|s| s.to_str()) {
+            Some(name) => name,
+            None => return (Plain, ""),
+        };
+
+        if let Some(dot_index) = file_name.rfind('.') {
+            let ext = &file_name[dot_index + 1..];
+            if dot_index < file_name.len() - 1 {
+                let ext = &file_name[dot_index + 1..];
+                (Format::from_str(&file_name[dot_index + 1..]).unwrap(), ext)
+            } else {
+                (Plain, ext)
+            }
+        } else {
+            (Plain, "")
+        }
     }
 }

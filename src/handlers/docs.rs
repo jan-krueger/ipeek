@@ -1,4 +1,5 @@
 use crate::format_middleware::Format;
+use crate::format_middleware::Format::Plain;
 use crate::handlers::all::get_all_response;
 use crate::handlers::asn::get_asn_response;
 use crate::handlers::blocklist::get_blocklist_response;
@@ -30,10 +31,10 @@ macro_rules! add_row {
 }
 
 fn endpoint_url(endpoint: &str, format: &Format) -> String {
-    if format.to_string().is_empty() {
-        format!("ipeek.io/{}", endpoint)
+    if *format == Plain {
+        format!("ipeek.io{}", endpoint)
     } else {
-        format!("ipeek.io/{}.{}", endpoint, format)
+        format!("ipeek.io{}.{}", endpoint, format)
     }
 }
 
@@ -60,7 +61,7 @@ pub async fn docs_handler(req: HttpRequest, state: web::Data<Arc<AppState>>) -> 
     };
 
     let ascii_art = format!(
-        "{green}\
+        "{green}
  (_)               | |    (_)
   _ _ __   ___  ___| | __  _  ___
  | | '_ \\ / _ \\/ _ \\ |/ / | |/ _ \\
@@ -139,15 +140,14 @@ async fn curl_request_table(req: HttpRequest, state: web::Data<Arc<AppState>>) -
         .set_content_arrangement(ContentArrangement::Dynamic)
         .set_style(TableComponent::VerticalLines, ' ');
 
-    table.add_row(vec![
-        Cell::new("curl").fg(Color::Red),
-        Cell::new("ipeek.io")
-            .fg(Color::Cyan)
-            .add_attribute(Attribute::Bold),
-        Cell::new(f(&format, &get_ip_response(&req))).fg(Color::DarkYellow),
-    ]);
-
-    add_row!(table, "ip", get_ip_response(&req), &format, f);
+    add_row!(
+        table,
+        if format == Plain { "" } else { "/" },
+        get_ip_response(&req),
+        &format,
+        f
+    );
+    add_row!(table, "/ip", get_ip_response(&req), &format, f);
     add_row!(
         table,
         "reverse_dns",
@@ -157,37 +157,37 @@ async fn curl_request_table(req: HttpRequest, state: web::Data<Arc<AppState>>) -
     );
     add_row!(
         table,
-        "country",
+        "/country",
         get_country_response(&req, &state),
         &format,
         f
     );
     add_row!(
         table,
-        "country_code",
+        "/country_code",
         get_country_code_response(&req, &state),
         &format,
         f
     );
     add_row!(
         table,
-        "region",
+        "/region",
         get_region_response(&req, &state),
         &format,
         f
     );
-    add_row!(table, "city", get_city_response(&req, &state), &format, f);
-    add_row!(table, "asn", get_asn_response(&req, &state), &format, f);
+    add_row!(table, "/city", get_city_response(&req, &state), &format, f);
+    add_row!(table, "/asn", get_asn_response(&req, &state), &format, f);
     add_row!(
         table,
-        "all",
+        "/all",
         get_all_response(&req, &state).await,
         &format,
         f
     );
     add_row!(
         table,
-        "blocklist",
+        "/blocklist",
         get_blocklist_response(&req).await,
         &format,
         f
