@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
 use crate::models::BlacklistReason::Unknown;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 pub trait ToPlainText {
     fn to_plain_text(&self) -> String;
@@ -24,12 +24,7 @@ impl ToPlainText for Info {
     fn to_plain_text(&self) -> String {
         format!(
             "IP: {}\nHostname: {}\nCountry: {} ({})\nRegion: {}\nCity: {}",
-            self.ip,
-            self.reverse_dns,
-            self.country,
-            self.country_code,
-            self.region,
-            self.city,
+            self.ip, self.reverse_dns, self.country, self.country_code, self.region, self.city,
         )
     }
 }
@@ -90,8 +85,12 @@ impl ToPlainText for AsnResponse {
     fn to_plain_text(&self) -> String {
         format!(
             "ASN: {}\nOrganization: {}",
-            self.autonomous_system_number.map(|n| n.to_string()).unwrap_or_default(),
-            self.autonomous_system_organization.clone().unwrap_or_default()
+            self.autonomous_system_number
+                .map(|n| n.to_string())
+                .unwrap_or_default(),
+            self.autonomous_system_organization
+                .clone()
+                .unwrap_or_default()
         )
     }
 }
@@ -168,16 +167,19 @@ pub struct CsvBlacklistEntry {
 
 impl ToCsv<CsvBlacklistEntry> for BlacklistResponse {
     fn to_csv_entries(&self) -> Vec<CsvBlacklistEntry> {
-        self.listed_in.iter().filter_map(|(dnsbl, reason)| {
-            if reason == &Unknown {
-                None
-            } else {
-                Some(CsvBlacklistEntry {
-                    ip: self.ip.clone(),
-                    dnsbl: dnsbl.clone(),
-                    reason: reason.clone(),
-                })
-            }
-        }).collect()
+        self.listed_in
+            .iter()
+            .filter_map(|(dnsbl, reason)| {
+                if reason == &Unknown {
+                    None
+                } else {
+                    Some(CsvBlacklistEntry {
+                        ip: self.ip.clone(),
+                        dnsbl: dnsbl.clone(),
+                        reason: reason.clone(),
+                    })
+                }
+            })
+            .collect()
     }
 }

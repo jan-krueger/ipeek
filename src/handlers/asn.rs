@@ -1,17 +1,17 @@
-use std::net::IpAddr;
-use std::sync::Arc;
-use actix_web::{web, HttpMessage, HttpRequest, HttpResponse};
-use maxminddb::Reader;
-use crate::AppState;
 use crate::format_middleware::Format;
 use crate::models::{AsnRecord, AsnResponse};
 use crate::util::{format_response, get_ip};
+use crate::AppState;
+use actix_web::{web, HttpMessage, HttpRequest, HttpResponse};
+use maxminddb::Reader;
+use std::net::IpAddr;
+use std::sync::Arc;
 
-pub async fn asn_handler(
-    req: HttpRequest,
-    state: web::Data<Arc<AppState>>,
-) -> HttpResponse {
-    format_response(req.extensions().get::<Format>().unwrap(), &get_asn_response(&req, &state))
+pub async fn asn_handler(req: HttpRequest, state: web::Data<Arc<AppState>>) -> HttpResponse {
+    format_response(
+        req.extensions().get::<Format>().unwrap(),
+        &get_asn_response(&req, &state),
+    )
 }
 
 pub fn get_asn_info(req: &HttpRequest, asn_db: &Reader<Vec<u8>>) -> AsnRecord {

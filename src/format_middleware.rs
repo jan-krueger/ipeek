@@ -1,11 +1,11 @@
-use std::fmt;
+use actix_web::dev::{Service, ServiceRequest, ServiceResponse};
+use actix_web::http::Uri;
 use actix_web::{dev, Error, HttpMessage};
-use std::task::{Context, Poll};
+use std::fmt;
 use std::future::{ready, Ready};
 use std::path::Path;
 use std::str::FromStr;
-use actix_web::dev::{Service, ServiceRequest, ServiceResponse};
-use actix_web::http::Uri;
+use std::task::{Context, Poll};
 
 // Middleware to extract format and store it in request extensions
 pub struct FormatMiddleware;
@@ -52,7 +52,10 @@ where
 
         let format = Format::from_str(ext_str).unwrap();
 
-        let clean_path = path.strip_suffix(&format!(".{}", ext_str)).unwrap_or(path).to_string();
+        let clean_path = path
+            .strip_suffix(&format!(".{}", ext_str))
+            .unwrap_or(path)
+            .to_string();
 
         req.extensions_mut().insert(format);
 

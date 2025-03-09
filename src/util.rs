@@ -1,14 +1,14 @@
-use actix_web::{HttpRequest, HttpResponse};
-use maxminddb::Reader;
-use serde::{Serialize};
-use crate::models::{Info, ToCsv, ToPlainText};
-use std::net::{IpAddr, Ipv4Addr};
 use crate::format_middleware::Format;
 use crate::handlers::city::get_city;
 use crate::handlers::country::get_country;
 use crate::handlers::country_code::get_country_code;
 use crate::handlers::region::get_region;
 use crate::handlers::reverse_dns::get_reverse_dns;
+use crate::models::{Info, ToCsv, ToPlainText};
+use actix_web::{HttpRequest, HttpResponse};
+use maxminddb::Reader;
+use serde::Serialize;
+use std::net::{IpAddr, Ipv4Addr};
 
 pub fn format_response<T, U>(format: &Format, data: &T) -> HttpResponse
 where
@@ -17,12 +17,11 @@ where
 {
     match format {
         Format::Json => {
-            let json_str = serde_json::to_string(data)
-                .unwrap_or_else(|err| err.to_string());
+            let json_str = serde_json::to_string(data).unwrap_or_else(|err| err.to_string());
             HttpResponse::Ok()
                 .content_type("application/json")
                 .body(format!("{}\n", json_str))
-        },
+        }
         Format::Xml => match quick_xml::se::to_string(data) {
             Ok(xml_str) => HttpResponse::Ok()
                 .content_type("application/xml")
@@ -31,36 +30,36 @@ where
         },
         Format::Csv => {
             let mut wtr = csv::Writer::from_writer(vec![]);
-            if let Err(err) = data.to_csv_entries().iter().try_for_each(|entry| wtr.serialize(entry)) {
-                return HttpResponse::InternalServerError().body(format!("CSV serialization error: {}", err));
+            if let Err(err) = data
+                .to_csv_entries()
+                .iter()
+                .try_for_each(|entry| wtr.serialize(entry))
+            {
+                return HttpResponse::InternalServerError()
+                    .body(format!("CSV serialization error: {}", err));
             }
 
             if let Err(err) = wtr.flush() {
-                return HttpResponse::InternalServerError().body(format!("CSV flush error: {}", err));
+                return HttpResponse::InternalServerError()
+                    .body(format!("CSV flush error: {}", err));
             }
 
             let csv_data = String::from_utf8(wtr.into_inner().unwrap_or_default())
                 .unwrap_or_else(|_| "CSV encoding error".to_string());
 
-            HttpResponse::Ok()
-                .content_type("text/csv")
-                .body(csv_data)
+            HttpResponse::Ok().content_type("text/csv").body(csv_data)
         }
-        Format::Yaml => {
-            match serde_yml::to_string(data) {
-                Ok(yaml_str) => HttpResponse::Ok()
-                    .content_type("application/x-yaml")
-                    .body(yaml_str),
-                Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
-            }
+        Format::Yaml => match serde_yml::to_string(data) {
+            Ok(yaml_str) => HttpResponse::Ok()
+                .content_type("application/x-yaml")
+                .body(yaml_str),
+            Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
         },
-        Format::Msgpack => {
-            match rmp_serde::to_vec(data) {
-                Ok(bin_data) => HttpResponse::Ok()
-                    .content_type("application/msgpack")
-                    .body(bin_data),
-                Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
-            }
+        Format::Msgpack => match rmp_serde::to_vec(data) {
+            Ok(bin_data) => HttpResponse::Ok()
+                .content_type("application/msgpack")
+                .body(bin_data),
+            Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
         },
         Format::Plain => HttpResponse::Ok()
             .content_type("text/plain")
@@ -93,7 +92,6 @@ pub fn get_ip(req: &HttpRequest) -> IpAddr {
         .and_then(|ip| ip.parse::<IpAddr>().ok())
         .unwrap_or(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)))
 }
-
 
 pub async fn get_info(req: &HttpRequest, geo_db: &Reader<Vec<u8>>) -> Info {
     let ip: IpAddr = get_ip(req);

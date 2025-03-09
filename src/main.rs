@@ -1,14 +1,14 @@
 mod config;
+mod format_middleware;
+mod handlers;
 mod models;
 mod util;
-mod handlers;
-mod format_middleware;
+use actix_web::middleware::Logger;
+use actix_web::{web, App, HttpServer};
+use env_logger::Env;
+use maxminddb::Reader;
 use std::sync::Arc;
 use std::time::Duration;
-use actix_web::{web, App, HttpServer};
-use actix_web::middleware::Logger;
-use env_logger::Env;
-use maxminddb::{Reader};
 
 struct AppState {
     geo_db: Reader<Vec<u8>>,
@@ -17,13 +17,12 @@ struct AppState {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let config = config::load_config("config.toml")
-        .expect("Failed to load configuration");
+    let config = config::load_config("config.toml").expect("Failed to load configuration");
 
-    let geo_reader = Reader::open_readfile(&config.geo_db_path)
-        .expect("Could not open GeoLite2 City database");
-    let asn_reader = Reader::open_readfile(&config.asn_db_path)
-        .expect("Could not open GeoLite2 ASN database");
+    let geo_reader =
+        Reader::open_readfile(&config.geo_db_path).expect("Could not open GeoLite2 City database");
+    let asn_reader =
+        Reader::open_readfile(&config.asn_db_path).expect("Could not open GeoLite2 ASN database");
 
     let shared_state = Arc::new(AppState {
         geo_db: geo_reader,
@@ -39,9 +38,9 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(shared_state.clone()))
             .wrap(Logger::new("%a %r %s %D"))
             .configure(handlers::init_routes)
-        })
-        .client_request_timeout(Duration::from_secs(30))
-        .bind(&config.server_address)?
-        .run()
-        .await
+    })
+    .client_request_timeout(Duration::from_secs(30))
+    .bind(&config.server_address)?
+    .run()
+    .await
 }
