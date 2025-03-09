@@ -120,62 +120,52 @@ async fn curl_request_table(
         .set_content_arrangement(ContentArrangement::Dynamic)
         .set_style(TableComponent::VerticalLines, ' ');
 
-    // Add rows
-    table.add_row(vec![
-        Cell::new("curl").fg(Color::Red),
-        Cell::new("ipeek.io/").fg(Color::Cyan).add_attribute(Attribute::Bold),
-        Cell::new(f(&format, &get_ip_response(&req))).fg(Color::DarkYellow),
-    ]);
-    table.add_row(vec![
-        Cell::new("curl").fg(Color::Red),
-        Cell::new("ipeek.io/ip").fg(Color::Cyan).add_attribute(Attribute::Bold),
-        Cell::new(f(&format, &get_ip_response(&req))).fg(Color::DarkYellow),
-    ]);
-    table.add_row(vec![
-        Cell::new("curl").fg(Color::Red),
-        Cell::new("ipeek.io/reverse_dns").fg(Color::Cyan).add_attribute(Attribute::Bold),
-        Cell::new(f(&format, &get_reverse_dns_response(&req).await)).fg(Color::DarkYellow),
-    ]);
-    table.add_row(vec![
-        Cell::new("curl").fg(Color::Red),
-        Cell::new("ipeek.io/country").fg(Color::Cyan).add_attribute(Attribute::Bold),
-        Cell::new(f(&format, &get_country_response(&req, &state))).fg(Color::DarkYellow),
-    ]);
-    table.add_row(vec![
-        Cell::new("curl").fg(Color::Red),
-        Cell::new("ipeek.io/country_code").fg(Color::Cyan).add_attribute(Attribute::Bold),
-        Cell::new(f(&format, &get_country_code_response(&req, &state))).fg(Color::DarkYellow),
-    ]);
-    table.add_row(vec![
-        Cell::new("curl").fg(Color::Red),
-        Cell::new("ipeek.io/city").fg(Color::Cyan).add_attribute(Attribute::Bold),
-        Cell::new(f(&format, &get_city_response(&req, &state))).fg(Color::DarkYellow),
-    ]);
-    table.add_row(vec![
-        Cell::new("curl").fg(Color::Red),
-        Cell::new("ipeek.io/region").fg(Color::Cyan).add_attribute(Attribute::Bold),
-        Cell::new(f(&format, &get_region_response(&req, &state))).fg(Color::DarkYellow),
-    ]);
-    table.add_row(vec![
-        Cell::new("curl").fg(Color::Red),
-        Cell::new("ipeek.io/asn").fg(Color::Cyan).add_attribute(Attribute::Bold),
-        Cell::new(f(&format, &get_asn_response(&req, &state))).fg(Color::DarkYellow),
-    ]);
-    table.add_row(vec![
-        Cell::new("curl").fg(Color::Red),
-        Cell::new("ipeek.io/all").fg(Color::Cyan).add_attribute(Attribute::Bold),
-        Cell::new(f(&format, &get_info(&req, &state.geo_db).await)).fg(Color::DarkYellow),
-    ]);
-    table.add_row(vec![
-        Cell::new("curl").fg(Color::Red),
-        Cell::new("ipeek.io/blacklist").fg(Color::Cyan).add_attribute(Attribute::Bold),
-        Cell::new(f(&format, &get_blacklist_response(&req).await)).fg(Color::DarkYellow),
-    ]);
-    table.add_row(vec![
-        Cell::new("curl").fg(Color::Red),
-        Cell::new("ipeek.io/docs").fg(Color::Cyan).add_attribute(Attribute::Bold),
-        Cell::new("(Documentation in plain-text format)").fg(Color::DarkYellow),
-    ]);
+    table
+        .add_row(vec![
+            Cell::new("curl").fg(Color::Red),
+            Cell::new("ipeek.io/").fg(Color::Cyan).add_attribute(Attribute::Bold),
+            Cell::new(f(&format, &get_ip_response(&req))).fg(Color::DarkYellow),
+        ]).add_row(vec![
+            Cell::new("curl").fg(Color::Red),
+            Cell::new("ipeek.io/ip").fg(Color::Cyan).add_attribute(Attribute::Bold),
+            Cell::new(f(&format, &get_ip_response(&req))).fg(Color::DarkYellow),
+        ]).add_row(vec![
+            Cell::new("curl").fg(Color::Red),
+            Cell::new("ipeek.io/reverse_dns").fg(Color::Cyan).add_attribute(Attribute::Bold),
+            Cell::new(f(&format, &get_reverse_dns_response(&req).await)).fg(Color::DarkYellow),
+        ]).add_row(vec![
+            Cell::new("curl").fg(Color::Red),
+            Cell::new("ipeek.io/country").fg(Color::Cyan).add_attribute(Attribute::Bold),
+            Cell::new(f(&format, &get_country_response(&req, &state))).fg(Color::DarkYellow),
+        ]).add_row(vec![
+            Cell::new("curl").fg(Color::Red),
+            Cell::new("ipeek.io/country_code").fg(Color::Cyan).add_attribute(Attribute::Bold),
+            Cell::new(f(&format, &get_country_code_response(&req, &state))).fg(Color::DarkYellow),
+        ]).add_row(vec![
+            Cell::new("curl").fg(Color::Red),
+            Cell::new("ipeek.io/city").fg(Color::Cyan).add_attribute(Attribute::Bold),
+            Cell::new(f(&format, &get_city_response(&req, &state))).fg(Color::DarkYellow),
+        ]).add_row(vec![
+            Cell::new("curl").fg(Color::Red),
+            Cell::new("ipeek.io/region").fg(Color::Cyan).add_attribute(Attribute::Bold),
+            Cell::new(f(&format, &get_region_response(&req, &state))).fg(Color::DarkYellow),
+        ]).add_row(vec![
+            Cell::new("curl").fg(Color::Red),
+            Cell::new("ipeek.io/asn").fg(Color::Cyan).add_attribute(Attribute::Bold),
+            Cell::new(f(&format, &get_asn_response(&req, &state))).fg(Color::DarkYellow),
+        ]).add_row(vec![
+            Cell::new("curl").fg(Color::Red),
+            Cell::new("ipeek.io/all").fg(Color::Cyan).add_attribute(Attribute::Bold),
+            Cell::new(f(&format, &get_info(&req, &state.geo_db).await)).fg(Color::DarkYellow),
+        ]).add_row(vec![
+            Cell::new("curl").fg(Color::Red),
+            Cell::new("ipeek.io/blacklist").fg(Color::Cyan).add_attribute(Attribute::Bold),
+            Cell::new(f(&format, &get_blacklist_response(&req).await)).fg(Color::DarkYellow),
+        ]).add_row(vec![
+            Cell::new("curl").fg(Color::Red),
+            Cell::new("ipeek.io/docs").fg(Color::Cyan).add_attribute(Attribute::Bold),
+            Cell::new("(Documentation in plain-text format)").fg(Color::DarkYellow),
+        ]);
 
     if is_browser(&req) {
         table.force_no_tty();
