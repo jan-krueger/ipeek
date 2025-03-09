@@ -90,10 +90,10 @@ pub fn get_ip(req: &HttpRequest) -> IpAddr {
 
 pub async fn get_info(req: &HttpRequest, geo_db: &Reader<Vec<u8>>) -> Info {
     let ip: IpAddr = get_ip(req);
-    let reverse_dns = get_reverse_dns(ip).await;
-    let city = get_city(ip, geo_db);
-    let country = get_country(ip, geo_db);
-    let region = get_region(ip, geo_db);
+    let reverse_dns = get_reverse_dns(ip).await.unwrap_or_else(|| "".to_string());
+    let city = get_city(ip, geo_db).unwrap_or_else(|| "".to_string());
+    let country = get_country(ip, geo_db).unwrap_or_else(|| "".to_string());
+    let region = get_region(ip, geo_db).unwrap_or_else(|| "".to_string());
 
     Info {
         ip: ip.to_string(),

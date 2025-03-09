@@ -1,7 +1,11 @@
 use std::sync::Arc;
 use actix_web::{web, HttpRequest, HttpResponse};
+use comfy_table::{Attribute, Cell, Color, Table};
 use crate::AppState;
 use crate::util::{get_info, is_browser};
+
+use crate::handlers::asn::get_asn_info;
+use crate::models::{AsnRecord, Info};
 
 pub async fn doc_handler(
     req: HttpRequest,
@@ -9,12 +13,12 @@ pub async fn doc_handler(
 ) -> HttpResponse {
     let info = get_info(&req, &state.geo_db).await;
 
-    let ip_address   = info.ip;
-    let remote_host  = info.reverse_dns.unwrap_or_else(|| "".to_string());
-    let country_code = info.country.unwrap_or_else(|| "".to_string());
+    let ip_address   = info.ip.clone();
+    let remote_host  = info.reverse_dns.clone();
+    let country_code = info.country.clone();
 
-    let (green, cyan, yellow, magenta, reset) = if is_browser(&req) {
-        ("", "", "", "", "")
+    let (green, cyan, yellow, magenta, reset, bold) = if is_browser(&req) {
+        ("", "", "", "", "", "")
     } else {
         (
             "\x1b[32m", // green
@@ -22,6 +26,7 @@ pub async fn doc_handler(
             "\x1b[33m", // yellow
             "\x1b[35m", // magenta
             "\x1b[0m",  // reset
+            "\x1b[1m",  // bold
         )
     };
 
@@ -39,16 +44,15 @@ pub async fn doc_handler(
         reset = reset
     );
 
-    // Unified documentation string, with extra example outputs.
     let doc = format!(
         r#"{ascii_art}
 
 ---------------
 IP Address:        {yellow}{ip_address}{reset}
 Remote Host:       {yellow}{remote_host}{reset}
-Country Code:      {yellow}{country_code}{reset}
+Country:           {yellow}{country_code}{reset}
 
-{magenta}Simple cURL API{reset}
+{magenta}{bold}Simple cURL API{reset}
 ---------------
 1) Return IP:
    {cyan}$ curl http://ipeek.io/ip{reset}
@@ -71,7 +75,7 @@ Country Code:      {yellow}{country_code}{reset}
 7) Return All Info:
    {cyan}$ curl http://ipeek.io/all{reset}
 
-{magenta}Output Formats{reset}
+{magenta}{bold}Output Formats{reset}
 --------------
 By default, responses are returned as plain text.
 You can specify a different format using the query parameter 'format':
@@ -81,13 +85,9 @@ You can specify a different format using the query parameter 'format':
   - {yellow}yaml{reset}     : Returns data in YAML format
   - {yellow}msgpack{reset}  : Returns data in MessagePack (binary) format
 
-{magenta}Examples with Outputs{reset}
+{magenta}{bold}Examples with Outputs{reset}
 -------------------------------------
-{cyan}$ curl https://ipeek.io/ip?format=json{reset}
-{cyan}$ curl https://ipeek.io/all?format=xml{reset}
-{cyan}$ curl https://ipeek.io/country?format=csv{reset}
-{cyan}$ curl https://ipeek.io/ip?format=yaml{reset}
-{cyan}$ curl https://ipeek.io/all?format=msgpack{reset}
+{curl_request_table}
 
 "#,
         ascii_art = ascii_art,
@@ -95,12 +95,79 @@ You can specify a different format using the query parameter 'format':
         yellow = yellow,
         magenta = magenta,
         reset = reset,
+        bold = bold,
         ip_address = ip_address,
-        remote_host = remote_host,
-        country_code = country_code,
+        curl_request_table = curl_request_table(&info, get_asn_info(&req, &state.asn_db), is_browser(&req)),
     );
+
 
     HttpResponse::Ok()
         .content_type("text/plain")
         .body(doc)
 }
+
+fn curl_request_table(info: &Info, asn: AsnRecord, is_browser: bool) -> String {
+    let mut table = Table::new();
+
+    table
+        .set_header(vec![
+            Cell::new("cURL Request").fg(Color::Green).add_attribute(Attribute::Bold),
+            Cell::new("Example Output").fg(Color::Green).add_attribute(Attribute::Bold),
+        ])
+        .add_row(vec![
+            Cell::new("curl ipeek.io/").fg(Color::Cyan),
+            Cell::new(&info.ip).fg(Color::Yellow),
+        ])
+        .add_row(vec![
+            Cell::new("curl ipeek.io/ip").fg(Color::Cyan),
+            Cell::new(&info.ip).fg(Color::Yellow),
+        ])
+        .add_row(vec![
+            Cell::new("curl ipeek.io/reverse_dns").fg(Color::Cyan),
+            Cell::new(&info.reverse_dns).fg(Color::Yellow),
+        ])
+        .add_row(vec![
+            Cell::new("curl ipeek.io/country").fg(Color::Cyan),
+            Cell::new(&info.country).fg(Color::Yellow),
+        ])
+        .add_row(vec![
+            Cell::new("curl ipeek.io/city").fg(Color::Cyan),
+            Cell::new(&info.city).fg(Color::Yellow),
+        ])
+        .add_row(vec![
+            Cell::new("curl ipeek.io/region").fg(Color::Cyan),
+            Cell::new(&info.region).fg(Color::Yellow),
+        ])
+        .add_row(vec![
+            Cell::new("curl ipeek.io/asn").fg(Color::Cyan),
+            Cell::new(format!(
+                "ASN: {}\nOrganization: {}",
+                asn.autonomous_system_number
+                    .map(|num| num.to_string())
+                    .unwrap_or_default(),
+                asn.autonomous_system_organization
+                    .as_ref()
+                    .map(String::as_str)
+                    .unwrap_or_default()
+            ))
+            .fg(Color::Yellow),
+        ])
+        .add_row(vec![
+            Cell::new("curl ipeek.io/all").fg(Color::Cyan),
+            Cell::new(&format!(
+                "IP: {}\nHostname: {}\nCountry: {}\nRegion: {}\nCity: {}",
+                info.ip, info.reverse_dns, info.country, info.region, info.city
+            ))
+                .fg(Color::Yellow),
+        ])
+        .add_row(vec![
+            Cell::new("curl ipeek.io/docs").fg(Color::Cyan),
+            Cell::new("(Documentation in plain-text format)").fg(Color::Yellow),
+        ]);
+
+    if is_browser {
+        table.force_no_tty();
+    }
+    table.to_string()
+}
+

@@ -7,10 +7,10 @@ pub trait ToPlainText {
 #[derive(Serialize)]
 pub struct Info {
     pub ip: String,
-    pub reverse_dns: Option<String>,
-    pub country: Option<String>,
-    pub city: Option<String>,
-    pub region: Option<String>,
+    pub reverse_dns: String,
+    pub country: String,
+    pub city: String,
+    pub region: String,
 }
 
 impl ToPlainText for Info {
@@ -18,10 +18,10 @@ impl ToPlainText for Info {
         format!(
             "IP: {}\nHostname: {}\nCountry: {}\nRegion: {}\nCity: {}",
             self.ip,
-            self.reverse_dns.clone().unwrap_or_else(|| "".to_string()),
-            self.country.clone().unwrap_or_else(|| "".to_string()),
-            self.region.clone().unwrap_or_else(|| "".to_string()),
-            self.city.clone().unwrap_or_else(|| "".to_string()),
+            self.reverse_dns.clone(),
+            self.country.clone(),
+            self.region.clone(),
+            self.city.clone(),
         )
     }
 }
@@ -46,10 +46,10 @@ impl ToPlainText for AsnResponse {
             "ASN: {}\nOrganization: {}",
             self.autonomous_system_number
                 .map(|n| n.to_string())
-                .unwrap_or_else(|| "".to_string()),
+                .unwrap_or_default(),
             self.autonomous_system_organization
                 .clone()
-                .unwrap_or_else(|| "".to_string())
+                .unwrap_or_default()
         )
     }
 }
