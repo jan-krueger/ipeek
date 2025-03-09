@@ -140,7 +140,7 @@ async fn curl_request_table(req: HttpRequest, state: web::Data<Arc<AppState>>) -
 
     table.add_row(vec![
         Cell::new("curl").fg(Color::Red),
-        Cell::new("ipeek.io/")
+        Cell::new("ipeek.io")
             .fg(Color::Cyan)
             .add_attribute(Attribute::Bold),
         Cell::new(f(&format, &get_ip_response(&req))).fg(Color::DarkYellow),
