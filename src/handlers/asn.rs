@@ -19,15 +19,15 @@ pub fn get_asn_info(req: &HttpRequest, asn_db: &Reader<Vec<u8>>) -> AsnRecord {
     let ip: IpAddr = get_ip(&req);
 
     asn_db.lookup(ip).unwrap_or(AsnRecord {
-        autonomous_system_organization: Some(0),
-        autonomous_system_number: Some("".to_string()),
+        aso: Some("".to_string()),
+        asn: Some(0),
     })
 }
 
 pub fn get_asn_response(req: &HttpRequest, state: &web::Data<Arc<AppState>>) -> AsnRecord {
     let asn_info = get_asn_info(&req, &state.asn_db);
     AsnRecord {
-        autonomous_system_organization: asn_info.autonomous_system_organization,
-        autonomous_system_number: asn_info.autonomous_system_number,
+        aso: asn_info.aso,
+        asn: asn_info.asn,
     }
 }

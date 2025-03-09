@@ -61,13 +61,8 @@ impl ToCsv<CsvInfoEntry> for AllResponse {
             country_code: self.country_code.clone(),
             region: self.region.clone(),
             city: self.city.clone(),
-            asn: self.asn.autonomous_system_organization.unwrap_or(0),
-            aso: self
-                .asn
-                .autonomous_system_number
-                .clone()
-                .unwrap_or("".to_string())
-                .clone(),
+            aso: self.asn.aso.clone().unwrap_or("".to_string()),
+            asn: self.asn.asn.unwrap_or(0),
             blocked: self.blocklist.blocked,
             blocklist_listed_in: self
                 .blocklist
@@ -83,18 +78,19 @@ impl ToCsv<CsvInfoEntry> for AllResponse {
 
 #[derive(Debug, Deserialize, Serialize, Clone, YaSerialize)]
 pub struct AsnRecord {
-    pub autonomous_system_organization: Option<u32>,
-    pub autonomous_system_number: Option<String>,
+    #[serde(rename(deserialize = "autonomous_system_organization"))]
+    pub aso: Option<String>,
+
+    #[serde(rename(deserialize = "autonomous_system_number"))]
+    pub asn: Option<u32>,
 }
 
 impl ToPlainText for AsnRecord {
     fn to_plain_text(&self) -> String {
         format!(
-            "ASN: {:?}\nOrganization: {}",
-            self.autonomous_system_organization.unwrap_or(0),
-            self.autonomous_system_number
-                .clone()
-                .unwrap_or_else(|| "".to_string())
+            "ASN: {}\nOrganization: {}",
+            self.asn.clone().unwrap_or_else(|| 0),
+            self.aso.clone().unwrap_or("".to_string())
         )
     }
 }
