@@ -1,17 +1,24 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-use actix_web::{web, HttpRequest, HttpResponse};
-use comfy_table::{Attribute, Cell, Color, Table};
+use crate::util::{format_response, get_info, is_browser, QueryOptions};
 use crate::AppState;
-use crate::util::{get_info, get_ip, is_browser};
-
-use crate::handlers::asn::get_asn_info;
-use crate::handlers::blacklist::check_blacklists;
-use crate::models::{AsnRecord, BlacklistReason, Info};
+use actix_web::{web, HttpRequest, HttpResponse};
+use comfy_table::{Attribute, Cell, Color, ContentArrangement, Table, TableComponent};
+use std::sync::Arc;
+use actix_web::body::MessageBody;
+use serde::Serialize;
+use crate::handlers::asn::get_asn_response;
+use crate::handlers::blacklist::get_blacklist_response;
+use crate::handlers::city::get_city_response;
+use crate::handlers::country::get_country_response;
+use crate::handlers::country_code::get_country_code_response;
+use crate::handlers::ip::get_ip_response;
+use crate::handlers::region::get_region_response;
+use crate::handlers::reverse_dns::get_reverse_dns_response;
+use crate::models::{ToCsv, ToPlainText};
 
 pub async fn doc_handler(
     req: HttpRequest,
     state: web::Data<Arc<AppState>>,
+    query: web::Query<QueryOptions>,
 ) -> HttpResponse {
     let info = get_info(&req, &state.geo_db).await;
 
@@ -74,7 +81,7 @@ You can specify a different format using the query parameter 'format':
         reset = reset,
         bold = bold,
         ip_address = ip_address,
-        curl_request_table = curl_request_table(&info, get_asn_info(&req, &state.asn_db), check_blacklists(get_ip(&req)).await, is_browser(&req)),
+        curl_request_table = curl_request_table(req, state, query).await.as_str(),
     );
 
 
@@ -83,91 +90,121 @@ You can specify a different format using the query parameter 'format':
         .body(doc)
 }
 
-fn curl_request_table(info: &Info, asn: AsnRecord, blacklist_results: HashMap<String, BlacklistReason>, is_browser: bool) -> String {
+async fn curl_request_table(
+    req: HttpRequest,
+    state: web::Data<Arc<AppState>>,
+    query: web::Query<QueryOptions>,
+) -> String {
     let mut table = Table::new();
+    let format = query.format.as_deref();
 
     table
         .set_header(vec![
+            Cell::new("").fg(Color::Green).add_attribute(Attribute::Bold), // Empty for "curl"
             Cell::new("cURL Request").fg(Color::Green).add_attribute(Attribute::Bold),
             Cell::new("Example Output").fg(Color::Green).add_attribute(Attribute::Bold),
         ])
-        .add_row(vec![
-            Cell::new("curl ipeek.io/").fg(Color::Cyan),
-            Cell::new(&info.ip).fg(Color::Yellow),
-        ])
-        .add_row(vec![
-            Cell::new("curl ipeek.io/ip").fg(Color::Cyan),
-            Cell::new(&info.ip).fg(Color::Yellow),
-        ])
-        .add_row(vec![
-            Cell::new("curl ipeek.io/reverse_dns").fg(Color::Cyan),
-            Cell::new(&info.reverse_dns).fg(Color::Yellow),
-        ])
-        .add_row(vec![
-            Cell::new("curl ipeek.io/country").fg(Color::Cyan),
-            Cell::new(&info.country).fg(Color::Yellow),
-        ])
-        .add_row(vec![
-            Cell::new("curl ipeek.io/country_code").fg(Color::Cyan),
-            Cell::new(&info.country_code).fg(Color::Yellow),
-        ])
-        .add_row(vec![
-            Cell::new("curl ipeek.io/city").fg(Color::Cyan),
-            Cell::new(&info.city).fg(Color::Yellow),
-        ])
-        .add_row(vec![
-            Cell::new("curl ipeek.io/region").fg(Color::Cyan),
-            Cell::new(&info.region).fg(Color::Yellow),
-        ])
-        .add_row(vec![
-            Cell::new("curl ipeek.io/asn").fg(Color::Cyan),
-            Cell::new(format!(
-                "ASN: {}\nOrganization: {}",
-                asn.autonomous_system_number
-                    .map(|num| num.to_string())
-                    .unwrap_or_default(),
-                asn.autonomous_system_organization
-                    .as_ref()
-                    .map(String::as_str)
-                    .unwrap_or_default()
-            ))
-            .fg(Color::Yellow),
-        ])
-        .add_row(vec![
-            Cell::new("curl ipeek.io/all").fg(Color::Cyan),
-            Cell::new(&format!(
-                "IP: {}\nHostname: {}\nCountry: {}\nRegion: {}\nCity: {}",
-                info.ip, info.reverse_dns, info.country, info.region, info.city
-            ))
-                .fg(Color::Yellow),
-        ])
-        .add_row(vec![
-            Cell::new("curl ipeek.io/blacklist").fg(Color::Cyan),
-            Cell::new(&format!(
-                "IP: {}\nBlacklisted: {}{}",
-                info.ip,
-                if !blacklist_results.is_empty() { "yes" } else { "no" },
-                if !blacklist_results.is_empty() {
-                    let lists = blacklist_results
-                        .iter()
-                        .filter(|(_, reason)| **reason != BlacklistReason::Unknown)
-                        .map(|(dnsbl, reason)| format!("\n - {} ({:?})", dnsbl, reason))
-                        .collect::<Vec<_>>()
-                        .join("");
-                    format!("\nLists:{}", lists)
-                } else {
-                    String::new()
-                }
-            )).fg(Color::Yellow),
-        ])
-        .add_row(vec![
-            Cell::new("curl ipeek.io/docs").fg(Color::Cyan),
-            Cell::new("(Documentation in plain-text format)").fg(Color::Yellow),
-        ]);
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_style(TableComponent::VerticalLines, ' ');
 
-    if is_browser {
+    // Add rows
+    table.add_row(vec![
+        Cell::new("curl").fg(Color::Red).add_attribute(Attribute::Bold),
+        Cell::new("ipeek.io/").fg(Color::Cyan),
+        Cell::new(f(format, &get_ip_response(&req))).fg(Color::Yellow),
+    ]);
+    table.add_row(vec![
+        Cell::new("curl").fg(Color::Red).add_attribute(Attribute::Bold),
+        Cell::new("ipeek.io/ip").fg(Color::Cyan),
+        Cell::new(f(format, &get_ip_response(&req))).fg(Color::Yellow),
+    ]);
+    table.add_row(vec![
+        Cell::new("curl").fg(Color::Red).add_attribute(Attribute::Bold),
+        Cell::new("ipeek.io/reverse_dns").fg(Color::Cyan),
+        Cell::new(f(format, &get_reverse_dns_response(&req).await)).fg(Color::Yellow),
+    ]);
+    table.add_row(vec![
+        Cell::new("curl").fg(Color::Red).add_attribute(Attribute::Bold),
+        Cell::new("ipeek.io/country").fg(Color::Cyan),
+        Cell::new(f(format, &get_country_response(&req, &state))).fg(Color::Yellow),
+    ]);
+    table.add_row(vec![
+        Cell::new("curl").fg(Color::Red).add_attribute(Attribute::Bold),
+        Cell::new("ipeek.io/country_code").fg(Color::Cyan),
+        Cell::new(f(format, &get_country_code_response(&req, &state))).fg(Color::Yellow),
+    ]);
+    table.add_row(vec![
+        Cell::new("curl").fg(Color::Red).add_attribute(Attribute::Bold),
+        Cell::new("ipeek.io/city").fg(Color::Cyan),
+        Cell::new(f(format, &get_city_response(&req, &state))).fg(Color::Yellow),
+    ]);
+    table.add_row(vec![
+        Cell::new("curl").fg(Color::Red).add_attribute(Attribute::Bold),
+        Cell::new("ipeek.io/region").fg(Color::Cyan),
+        Cell::new(f(format, &get_region_response(&req, &state))).fg(Color::Yellow),
+    ]);
+    table.add_row(vec![
+        Cell::new("curl").fg(Color::Red).add_attribute(Attribute::Bold),
+        Cell::new("ipeek.io/asn").fg(Color::Cyan),
+        Cell::new(f(format, &get_asn_response(&req, &state))).fg(Color::Yellow),
+    ]);
+    table.add_row(vec![
+        Cell::new("curl").fg(Color::Red).add_attribute(Attribute::Bold),
+        Cell::new("ipeek.io/all").fg(Color::Cyan),
+        Cell::new(f(format, &get_info(&req, &state.geo_db).await)).fg(Color::Yellow),
+    ]);
+    table.add_row(vec![
+        Cell::new("curl").fg(Color::Red).add_attribute(Attribute::Bold),
+        Cell::new("ipeek.io/blacklist").fg(Color::Cyan),
+        Cell::new(f(format, &get_blacklist_response(&req).await)).fg(Color::Yellow),
+    ]);
+    table.add_row(vec![
+        Cell::new("curl").fg(Color::Red).add_attribute(Attribute::Bold),
+        Cell::new("ipeek.io/docs").fg(Color::Cyan),
+        Cell::new("(Documentation in plain-text format)").fg(Color::Yellow),
+    ]);
+
+    if is_browser(&req) {
         table.force_no_tty();
+    } else {
+        table.enforce_styling();
     }
     table.to_string()
 }
 
+fn f<T, U>(format: Option<&str>, response: &T) -> String
+    where T: Serialize + ToPlainText + ToCsv<U>,
+          U: Serialize
+{
+    let http_response = format_response(format, response);
+
+    match http_response.into_body().try_into_bytes() {
+        Ok(bytes) => {
+            if format.as_deref() == Some("msgpack") {
+                let byte_string = bytes
+                       .iter()
+                       .map(|byte| format!("0x{:02X} ", byte))
+                       .collect::<String>();
+                if byte_string.len() > 32 {
+                    return format!("{}...", &byte_string[..32])
+                } else {
+                    return byte_string
+                }
+            }
+
+            let full_string = String::from_utf8_lossy(&bytes).to_string();
+            full_string
+                .lines()
+                .map(|line| {
+                    if line.len() > 64 {
+                        format!("{}...", &line[..64])
+                    } else {
+                        line.to_string()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+        },
+        Err(_) => "<failed to extract response body>".to_string(),
+    }
+}

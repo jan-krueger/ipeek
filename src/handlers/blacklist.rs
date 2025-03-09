@@ -1,9 +1,9 @@
+use crate::config::DNS_RESOLVER;
+use crate::models::{BlacklistReason, BlacklistResponse};
+use crate::util::{format_response, get_ip, QueryOptions};
+use actix_web::{web, HttpRequest, HttpResponse};
 use std::collections::HashMap;
 use std::net::IpAddr;
-use actix_web::{web, HttpRequest, HttpResponse};
-use crate::models::{BlacklistReason, BlacklistResponse};
-use crate::config::DNS_RESOLVER;
-use crate::util::{format_response, get_ip, QueryOptions};
 
 const BLACKLISTS: &[&str] = &[
     "zen.spamhaus.org",
@@ -15,17 +15,20 @@ pub async fn blacklist_handler(
     req: HttpRequest,
     query: web::Query<QueryOptions>,
 ) -> HttpResponse {
+      format_response(query.format.as_deref(), &get_blacklist_response(&req).await)
+}
+
+pub async fn get_blacklist_response(req: &HttpRequest) -> BlacklistResponse {
     let ip = get_ip(&req);
     let listed_info = check_blacklists(ip).await;
 
-    let response = BlacklistResponse {
+    BlacklistResponse {
         ip: ip.to_string(),
         blacklisted: !listed_info.is_empty(),
         listed_in: listed_info,
-    };
-
-    format_response(query.format.as_deref(), &response)
+    }
 }
+
 
 pub async fn check_blacklists(ip: IpAddr) -> HashMap<String, BlacklistReason> {
     let mut tasks = Vec::new();

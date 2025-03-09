@@ -11,9 +11,7 @@ pub async fn city_handler(
     state: web::Data<Arc<AppState>>,
     query: web::Query<QueryOptions>,
 ) -> HttpResponse {
-    let result = get_city(get_ip(&req), &state.geo_db).unwrap_or_else(|| "".to_string());
-    let response = SimpleResponse { value: result };
-    format_response(query.format.as_deref(), &response)
+    format_response(query.format.as_deref(), &get_city_response(&req, &state))
 }
 
 pub fn get_city(ip: IpAddr, geo_db: &Reader<Vec<u8>>) -> Option<String> {
@@ -22,4 +20,9 @@ pub fn get_city(ip: IpAddr, geo_db: &Reader<Vec<u8>>) -> Option<String> {
         .get("en")
         .cloned()
         .map(String::from)
+}
+
+pub fn get_city_response(req: &HttpRequest, state: &web::Data<Arc<AppState>>) -> SimpleResponse {
+    let result = get_city(get_ip(&req), &state.geo_db).unwrap_or_else(|| "".to_string());
+    SimpleResponse { value: result }
 }

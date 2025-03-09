@@ -6,7 +6,10 @@ pub async fn ip_handler(
     req: HttpRequest,
     query: web::Query<QueryOptions>,
 ) -> HttpResponse {
+    format_response(query.format.as_deref(), &get_ip_response(&req))
+}
+
+pub fn get_ip_response(req: &HttpRequest) -> SimpleResponse {
     let ip = get_ip(&req).to_string();
-    let response = SimpleResponse { value: ip };
-    format_response(query.format.as_deref(), &response)
+    SimpleResponse { value: ip }
 }

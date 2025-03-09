@@ -11,12 +11,7 @@ pub async fn asn_handler(
     state: web::Data<Arc<AppState>>,
     query: web::Query<QueryOptions>,
 ) -> HttpResponse {
-    let asn_info = get_asn_info(&req, &state.asn_db);
-    let response = AsnResponse {
-        autonomous_system_number: asn_info.autonomous_system_number,
-        autonomous_system_organization: asn_info.autonomous_system_organization,
-    };
-    format_response(query.format.as_deref(), &response)
+    format_response(query.format.as_deref(), &get_asn_response(&req, &state))
 }
 
 pub fn get_asn_info(req: &HttpRequest, asn_db: &Reader<Vec<u8>>) -> AsnRecord {
@@ -26,4 +21,12 @@ pub fn get_asn_info(req: &HttpRequest, asn_db: &Reader<Vec<u8>>) -> AsnRecord {
         autonomous_system_number: None,
         autonomous_system_organization: None,
     })
+}
+
+pub fn get_asn_response(req: &HttpRequest, state: &web::Data<Arc<AppState>>) -> AsnResponse {
+    let asn_info = get_asn_info(&req, &state.asn_db);
+    AsnResponse {
+        autonomous_system_number: asn_info.autonomous_system_number,
+        autonomous_system_organization: asn_info.autonomous_system_organization,
+    }
 }

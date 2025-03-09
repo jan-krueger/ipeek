@@ -11,7 +11,7 @@ pub async fn root_handler(
     query: web::Query<QueryOptions>,
 ) -> HttpResponse {
     if is_browser(&req) {
-        doc::doc_handler(req, state).await
+        doc::doc_handler(req, state, query).await
     } else {
         ip::ip_handler(req, query).await
     }
