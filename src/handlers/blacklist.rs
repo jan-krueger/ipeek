@@ -70,7 +70,7 @@ pub async fn check_blacklists(ip: &IpAddr) -> Vec<BlacklistEntry> {
                     }
 
                     listed_in.push(BlacklistEntry {
-                        dnsbl: "".to_string(),
+                        dnsbl: dnsbl.to_string(),
                         reason,
                     });
                 }
