@@ -8,7 +8,7 @@ pub mod asn;
 pub mod all;
 pub mod doc;
 mod blacklist;
-pub(crate) mod country_code;
+pub mod country_code;
 
 use actix_web::web;
 

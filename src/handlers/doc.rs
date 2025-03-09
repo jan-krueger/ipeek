@@ -19,12 +19,11 @@ pub async fn doc_handler(
     let remote_host  = info.reverse_dns.clone();
     let country_code = info.country.clone();
 
-    let (green, cyan, yellow, magenta, reset, bold) = if is_browser(&req) {
-        ("", "", "", "", "", "")
+    let (green, yellow, magenta, reset, bold) = if is_browser(&req) {
+        ("", "", "", "", "")
     } else {
         (
             "\x1b[32m", // green
-            "\x1b[36m", // cyan
             "\x1b[33m", // yellow
             "\x1b[35m", // magenta
             "\x1b[0m",  // reset
@@ -70,7 +69,6 @@ You can specify a different format using the query parameter 'format':
 
 "#,
         ascii_art = ascii_art,
-        cyan = cyan,
         yellow = yellow,
         magenta = magenta,
         reset = reset,
