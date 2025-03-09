@@ -5,7 +5,7 @@ use comfy_table::{Attribute, Cell, Color, ContentArrangement, Table, TableCompon
 use std::sync::Arc;
 use actix_web::body::MessageBody;
 use serde::Serialize;
-
+use crate::format_middleware::Format;
 use crate::handlers::asn::get_asn_response;
 use crate::handlers::blacklist::get_blacklist_response;
 use crate::handlers::city::get_city_response;
@@ -109,7 +109,7 @@ async fn curl_request_table(
     state: web::Data<Arc<AppState>>,
 ) -> String {
     let mut table = Table::new();
-    let format = req.extensions().get::<String>().unwrap().clone();
+    let format = req.extensions().get::<Format>().unwrap().clone();
 
     table
         .set_header(vec![
@@ -127,39 +127,39 @@ async fn curl_request_table(
             Cell::new(f(&format, &get_ip_response(&req))).fg(Color::DarkYellow),
         ]).add_row(vec![
             Cell::new("curl").fg(Color::Red),
-            Cell::new("ipeek.io/ip").fg(Color::Cyan).add_attribute(Attribute::Bold),
+            Cell::new(format!("ipeek.io/ip{}{}", (!format.to_string().is_empty()).then(|| ".").unwrap_or(""), format)).fg(Color::Cyan).add_attribute(Attribute::Bold),
             Cell::new(f(&format, &get_ip_response(&req))).fg(Color::DarkYellow),
         ]).add_row(vec![
             Cell::new("curl").fg(Color::Red),
-            Cell::new("ipeek.io/reverse_dns").fg(Color::Cyan).add_attribute(Attribute::Bold),
+            Cell::new(format!("ipeek.io/reverse_dns{}{}", (!format.to_string().is_empty()).then(|| ".").unwrap_or(""), format)).fg(Color::Cyan).add_attribute(Attribute::Bold),
             Cell::new(f(&format, &get_reverse_dns_response(&req).await)).fg(Color::DarkYellow),
         ]).add_row(vec![
             Cell::new("curl").fg(Color::Red),
-            Cell::new("ipeek.io/country").fg(Color::Cyan).add_attribute(Attribute::Bold),
+            Cell::new(format!("ipeek.io/country{}{}", (!format.to_string().is_empty()).then(|| ".").unwrap_or(""), format)).fg(Color::Cyan).add_attribute(Attribute::Bold),
             Cell::new(f(&format, &get_country_response(&req, &state))).fg(Color::DarkYellow),
         ]).add_row(vec![
             Cell::new("curl").fg(Color::Red),
-            Cell::new("ipeek.io/country_code").fg(Color::Cyan).add_attribute(Attribute::Bold),
+            Cell::new(format!("ipeek.io/country_code{}{}", (!format.to_string().is_empty()).then(|| ".").unwrap_or(""), format)).fg(Color::Cyan).add_attribute(Attribute::Bold),
             Cell::new(f(&format, &get_country_code_response(&req, &state))).fg(Color::DarkYellow),
         ]).add_row(vec![
             Cell::new("curl").fg(Color::Red),
-            Cell::new("ipeek.io/city").fg(Color::Cyan).add_attribute(Attribute::Bold),
+            Cell::new(format!("ipeek.io/city{}{}", (!format.to_string().is_empty()).then(|| ".").unwrap_or(""), format)).fg(Color::Cyan).add_attribute(Attribute::Bold),
             Cell::new(f(&format, &get_city_response(&req, &state))).fg(Color::DarkYellow),
         ]).add_row(vec![
             Cell::new("curl").fg(Color::Red),
-            Cell::new("ipeek.io/region").fg(Color::Cyan).add_attribute(Attribute::Bold),
+            Cell::new(format!("ipeek.io/region{}{}", (!format.to_string().is_empty()).then(|| ".").unwrap_or(""), format)).fg(Color::Cyan).add_attribute(Attribute::Bold),
             Cell::new(f(&format, &get_region_response(&req, &state))).fg(Color::DarkYellow),
         ]).add_row(vec![
             Cell::new("curl").fg(Color::Red),
-            Cell::new("ipeek.io/asn").fg(Color::Cyan).add_attribute(Attribute::Bold),
+            Cell::new(format!("ipeek.io/asn{}{}", (!format.to_string().is_empty()).then(|| ".").unwrap_or(""), format)).fg(Color::Cyan).add_attribute(Attribute::Bold),
             Cell::new(f(&format, &get_asn_response(&req, &state))).fg(Color::DarkYellow),
         ]).add_row(vec![
             Cell::new("curl").fg(Color::Red),
-            Cell::new("ipeek.io/all").fg(Color::Cyan).add_attribute(Attribute::Bold),
+            Cell::new(format!("ipeek.io/all{}{}", (!format.to_string().is_empty()).then(|| ".").unwrap_or(""), format)).fg(Color::Cyan).add_attribute(Attribute::Bold),
             Cell::new(f(&format, &get_info(&req, &state.geo_db).await)).fg(Color::DarkYellow),
         ]).add_row(vec![
             Cell::new("curl").fg(Color::Red),
-            Cell::new("ipeek.io/blacklist").fg(Color::Cyan).add_attribute(Attribute::Bold),
+            Cell::new(format!("ipeek.io/blacklist{}{}", (!format.to_string().is_empty()).then(|| ".").unwrap_or(""), format)).fg(Color::Cyan).add_attribute(Attribute::Bold),
             Cell::new(f(&format, &get_blacklist_response(&req).await)).fg(Color::DarkYellow),
         ]).add_row(vec![
             Cell::new("curl").fg(Color::Red),
@@ -175,7 +175,8 @@ async fn curl_request_table(
     table.to_string()
 }
 
-fn f<T, U>(format: &String, response: &T) -> String
+
+fn f<T, U>(format: &Format, response: &T) -> String
     where T: Serialize + ToPlainText + ToCsv<U>,
           U: Serialize
 {
@@ -183,7 +184,7 @@ fn f<T, U>(format: &String, response: &T) -> String
 
     match http_response.into_body().try_into_bytes() {
         Ok(bytes) => {
-            if format.as_str() == "msgpack" {
+            if *format == Format::Msgpack {
                 let byte_string = bytes
                        .iter()
                        .map(|byte| format!("0x{:02X} ", byte))

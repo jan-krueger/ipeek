@@ -4,6 +4,7 @@ use crate::util::{format_response, get_ip};
 use actix_web::{HttpMessage, HttpRequest, HttpResponse};
 use std::collections::HashMap;
 use std::net::IpAddr;
+use crate::format_middleware::Format;
 use crate::models::BlacklistReason::Unknown;
 
 const BLACKLISTS: &[&str] = &[
@@ -15,7 +16,7 @@ const BLACKLISTS: &[&str] = &[
 pub async fn blacklist_handler(
     req: HttpRequest,
 ) -> HttpResponse {
-      format_response(req.extensions().get::<String>().unwrap(), &get_blacklist_response(&req).await)
+      format_response(req.extensions().get::<Format>().unwrap(), &get_blacklist_response(&req).await)
 }
 
 pub async fn get_blacklist_response(req: &HttpRequest) -> BlacklistResponse {

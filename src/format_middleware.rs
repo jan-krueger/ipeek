@@ -1,7 +1,9 @@
+use std::fmt;
 use actix_web::{dev, Error, HttpMessage};
 use std::task::{Context, Poll};
 use std::future::{ready, Ready};
 use std::path::Path;
+use std::str::FromStr;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse};
 use actix_web::http::Uri;
 
@@ -24,7 +26,6 @@ where
     }
 }
 
-// Middleware Service Implementation
 pub struct FormatMiddlewareService<S> {
     service: S,
 }
@@ -44,13 +45,14 @@ where
 
     fn call(&self, mut req: ServiceRequest) -> Self::Future {
         let path = req.path();
-        let format = Path::new(path)
+        let ext_str = Path::new(path)
             .extension()
             .and_then(|ext| ext.to_str())
-            .unwrap_or("plain")
-            .to_ascii_lowercase();
+            .unwrap_or("plain");
 
-        let clean_path = path.strip_suffix(&format!(".{}", format)).unwrap_or(path).to_string();
+        let format = Format::from_str(ext_str).unwrap();
+
+        let clean_path = path.strip_suffix(&format!(".{}", ext_str)).unwrap_or(path).to_string();
 
         req.extensions_mut().insert(format);
 
@@ -59,5 +61,44 @@ where
         }
 
         self.service.call(req)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Format {
+    Json,
+    Xml,
+    Csv,
+    Yaml,
+    Msgpack,
+    Plain,
+}
+
+impl FromStr for Format {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_ascii_lowercase().as_str() {
+            "json" => Ok(Format::Json),
+            "xml" => Ok(Format::Xml),
+            "csv" => Ok(Format::Csv),
+            "yaml" => Ok(Format::Yaml),
+            "msgpack" => Ok(Format::Msgpack),
+            _ => Ok(Format::Plain),
+        }
+    }
+}
+
+impl fmt::Display for Format {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Format::Json => "json",
+            Format::Xml => "xml",
+            Format::Csv => "csv",
+            Format::Yaml => "yaml",
+            Format::Msgpack => "msgpack",
+            Format::Plain => "",
+        };
+        write!(f, "{}", s)
     }
 }

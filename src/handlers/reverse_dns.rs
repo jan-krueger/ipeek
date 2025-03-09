@@ -3,11 +3,12 @@ use actix_web::{HttpMessage, HttpRequest, HttpResponse};
 use crate::models::{SimpleResponse};
 use crate::util::{format_response, get_ip};
 use crate::config::DNS_RESOLVER;
+use crate::format_middleware::Format;
 
 pub async fn reverse_dns_handler(
     req: HttpRequest,
 ) -> HttpResponse {
-    format_response(req.extensions().get::<String>().unwrap(), &get_reverse_dns_response(&req).await)
+    format_response(req.extensions().get::<Format>().unwrap(), &get_reverse_dns_response(&req).await)
 }
 pub async fn get_reverse_dns(ip: IpAddr) -> Option<String> {
     let ptr_lookup = DNS_RESOLVER.reverse_lookup(ip).await.ok()?;

@@ -3,32 +3,33 @@ use maxminddb::Reader;
 use serde::{Serialize};
 use crate::models::{Info, ToCsv, ToPlainText};
 use std::net::{IpAddr, Ipv4Addr};
+use crate::format_middleware::Format;
 use crate::handlers::city::get_city;
 use crate::handlers::country::get_country;
 use crate::handlers::country_code::get_country_code;
 use crate::handlers::region::get_region;
 use crate::handlers::reverse_dns::get_reverse_dns;
 
-pub fn format_response<T, U>(format: &String, data: &T) -> HttpResponse
+pub fn format_response<T, U>(format: &Format, data: &T) -> HttpResponse
 where
     T: Serialize + ToPlainText + ToCsv<U>,
     U: Serialize,
 {
-    match format.as_str() {
-        "json" => {
+    match format {
+        Format::Json => {
             let json_str = serde_json::to_string(data)
                 .unwrap_or_else(|err| err.to_string());
             HttpResponse::Ok()
                 .content_type("application/json")
                 .body(format!("{}\n", json_str))
         },
-        "xml" => match quick_xml::se::to_string(data) {
+        Format::Xml => match quick_xml::se::to_string(data) {
             Ok(xml_str) => HttpResponse::Ok()
                 .content_type("application/xml")
                 .body(format!("{}\n", xml_str)),
             Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
         },
-        "csv" => {
+        Format::Csv => {
             let mut wtr = csv::Writer::from_writer(vec![]);
             if let Err(err) = data.to_csv_entries().iter().try_for_each(|entry| wtr.serialize(entry)) {
                 return HttpResponse::InternalServerError().body(format!("CSV serialization error: {}", err));
@@ -45,7 +46,7 @@ where
                 .content_type("text/csv")
                 .body(csv_data)
         }
-        "yaml" => {
+        Format::Yaml => {
             match serde_yml::to_string(data) {
                 Ok(yaml_str) => HttpResponse::Ok()
                     .content_type("application/x-yaml")
@@ -53,7 +54,7 @@ where
                 Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
             }
         },
-        "msgpack" => {
+        Format::Msgpack => {
             match rmp_serde::to_vec(data) {
                 Ok(bin_data) => HttpResponse::Ok()
                     .content_type("application/msgpack")
@@ -61,7 +62,7 @@ where
                 Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
             }
         },
-        _ => HttpResponse::Ok()
+        Format::Plain => HttpResponse::Ok()
             .content_type("text/plain")
             .body(format!("{}\n", data.to_plain_text())),
     }
