@@ -1,7 +1,7 @@
 use crate::config::DNS_RESOLVER;
 use crate::models::{BlacklistReason, BlacklistResponse};
-use crate::util::{format_response, get_ip, QueryOptions};
-use actix_web::{web, HttpRequest, HttpResponse};
+use crate::util::{format_response, get_ip};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse};
 use std::collections::HashMap;
 use std::net::IpAddr;
 
@@ -13,9 +13,8 @@ const BLACKLISTS: &[&str] = &[
 
 pub async fn blacklist_handler(
     req: HttpRequest,
-    query: web::Query<QueryOptions>,
 ) -> HttpResponse {
-      format_response(query.format.as_deref(), &get_blacklist_response(&req).await)
+      format_response(req.extensions().get::<String>().unwrap(), &get_blacklist_response(&req).await)
 }
 
 pub async fn get_blacklist_response(req: &HttpRequest) -> BlacklistResponse {

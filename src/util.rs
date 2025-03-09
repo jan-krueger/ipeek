@@ -1,6 +1,6 @@
 use actix_web::{HttpRequest, HttpResponse};
 use maxminddb::Reader;
-use serde::{Deserialize, Serialize};
+use serde::{Serialize};
 use crate::models::{Info, ToCsv, ToPlainText};
 use std::net::{IpAddr, Ipv4Addr};
 use crate::handlers::city::get_city;
@@ -9,26 +9,26 @@ use crate::handlers::country_code::get_country_code;
 use crate::handlers::region::get_region;
 use crate::handlers::reverse_dns::get_reverse_dns;
 
-pub fn format_response<T, U>(format: Option<&str>, data: &T) -> HttpResponse
+pub fn format_response<T, U>(format: &String, data: &T) -> HttpResponse
 where
     T: Serialize + ToPlainText + ToCsv<U>,
     U: Serialize,
 {
-    match format {
-        Some("json") => {
+    match format.as_str() {
+        "json" => {
             let json_str = serde_json::to_string(data)
                 .unwrap_or_else(|err| err.to_string());
             HttpResponse::Ok()
                 .content_type("application/json")
                 .body(format!("{}\n", json_str))
         },
-        Some("xml") => match serde_xml_rs::to_string(data) {
+        "xml" => match serde_xml_rs::to_string(data) {
             Ok(xml_str) => HttpResponse::Ok()
                 .content_type("application/xml")
                 .body(format!("{}\n", xml_str)),
             Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
         },
-        Some("csv") => {
+        "csv" => {
             let mut wtr = csv::Writer::from_writer(vec![]);
             if let Err(err) = data.to_csv_entries().iter().try_for_each(|entry| wtr.serialize(entry)) {
                 return HttpResponse::InternalServerError().body(format!("CSV serialization error: {}", err));
@@ -45,7 +45,7 @@ where
                 .content_type("text/csv")
                 .body(csv_data)
         }
-        Some("yaml") => {
+        "yaml" => {
             match serde_yml::to_string(data) {
                 Ok(yaml_str) => HttpResponse::Ok()
                     .content_type("application/x-yaml")
@@ -53,7 +53,7 @@ where
                 Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
             }
         },
-        Some("msgpack") => {
+        "msgpack" => {
             match rmp_serde::to_vec(data) {
                 Ok(bin_data) => HttpResponse::Ok()
                     .content_type("application/msgpack")
@@ -131,10 +131,4 @@ pub fn is_browser(req: &HttpRequest) -> bool {
         }
     }
     false
-}
-
-
-#[derive(Deserialize)]
-pub struct QueryOptions {
-    pub format: Option<String>,
 }

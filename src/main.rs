@@ -2,7 +2,7 @@ mod config;
 mod models;
 mod util;
 mod handlers;
-
+mod format_middleware;
 use std::sync::Arc;
 use std::time::Duration;
 use actix_web::{web, App, HttpServer};

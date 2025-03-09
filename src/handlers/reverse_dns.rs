@@ -1,14 +1,13 @@
 use std::net::{IpAddr};
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse};
 use crate::models::{SimpleResponse};
-use crate::util::{format_response, get_ip, QueryOptions};
+use crate::util::{format_response, get_ip};
 use crate::config::DNS_RESOLVER;
 
 pub async fn reverse_dns_handler(
     req: HttpRequest,
-    query: web::Query<QueryOptions>,
 ) -> HttpResponse {
-    format_response(query.format.as_deref(), &get_reverse_dns_response(&req).await)
+    format_response(req.extensions().get::<String>().unwrap(), &get_reverse_dns_response(&req).await)
 }
 pub async fn get_reverse_dns(ip: IpAddr) -> Option<String> {
     let ptr_lookup = DNS_RESOLVER.reverse_lookup(ip).await.ok()?;
