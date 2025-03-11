@@ -1,6 +1,6 @@
 use crate::format_middleware::Format;
 use crate::models::{ToCsv, ToPlainText};
-use actix_web::{HttpRequest, HttpResponse};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse};
 use serde::Serialize;
 use std::net::{IpAddr, Ipv4Addr};
 
@@ -54,7 +54,7 @@ where
 
             HttpResponse::Ok().content_type("text/csv").body(csv_data)
         }
-        Format::Yaml => match serde_yml::to_string(data) {
+        Format::Yml => match serde_yml::to_string(data) {
             Ok(yaml_str) => HttpResponse::Ok()
                 .content_type("application/x-yaml")
                 .body(yaml_str),
@@ -66,7 +66,7 @@ where
                 .body(bin_data),
             Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
         },
-        Format::Plain => HttpResponse::Ok()
+        Format::Plain | Format::Txt => HttpResponse::Ok()
             .content_type("text/plain")
             .body(format!("{}\n", data.to_plain_text())),
     }
@@ -132,6 +132,10 @@ static API_TOOLS: [&str; 8] = [
 
 pub fn client_supports_color(req: &HttpRequest) -> bool {
     if is_browser(req) {
+        return false;
+    }
+
+    if req.extensions().get::<Format>().unwrap().clone() == Format::Txt {
         return false;
     }
 

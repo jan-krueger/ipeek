@@ -83,8 +83,9 @@ pub enum Format {
     Json,
     Xml,
     Csv,
-    Yaml,
+    Yml,
     Msgpack,
+    Txt,
     Plain,
 }
 
@@ -96,8 +97,9 @@ impl FromStr for Format {
             "json" => Ok(Format::Json),
             "xml" => Ok(Format::Xml),
             "csv" => Ok(Format::Csv),
-            "yaml" | "yml" => Ok(Format::Yaml),
+            "yaml" | "yml" => Ok(Format::Yml),
             "msgpack" => Ok(Format::Msgpack),
+            "txt" => Ok(Format::Txt),
             _ => Ok(Format::Plain),
         }
     }
@@ -105,15 +107,15 @@ impl FromStr for Format {
 
 impl Format {
     fn from_accept_header(accept: &str) -> Format {
-        // Parse the Accept header value
         for media_range in accept.split(',') {
             let media_type = media_range.split(';').next().unwrap_or("").trim();
             match media_type {
                 "application/json" => return Format::Json,
                 "application/xml" | "text/xml" => return Format::Xml,
                 "text/csv" => return Format::Csv,
-                "application/yaml" | "text/yaml" => return Format::Yaml,
+                "application/yaml" | "text/yaml" => return Format::Yml,
                 "application/msgpack" | "application/x-msgpack" => return Format::Msgpack,
+                "text/plain" => return Format::Txt,
                 _ => continue,
             }
         }
@@ -127,8 +129,9 @@ impl fmt::Display for Format {
             Format::Json => "json",
             Format::Xml => "xml",
             Format::Csv => "csv",
-            Format::Yaml => "yaml",
+            Format::Yml => "yml",
             Format::Msgpack => "msgpack",
+            Format::Txt => "txt",
             Format::Plain => "",
         };
         write!(f, "{}", s)
