@@ -1,6 +1,6 @@
-use crate::format_middleware::Format::Plain;
 use actix_web::dev::{Service, ServiceRequest, ServiceResponse};
 use actix_web::http::Uri;
+use actix_web::http::header::{ACCEPT};
 use actix_web::{dev, Error, HttpMessage};
 use std::fmt;
 use std::future::{ready, Ready};
@@ -48,6 +48,21 @@ where
         let path = req.path();
         let (format, ext_str) = Format::from_path(path);
 
+        // If no format was specified in the path, check Accept header
+        let format = if format == Format::Plain {
+            if let Some(accept_header) = req.headers().get(ACCEPT) {
+                if let Ok(accept) = accept_header.to_str() {
+                    Format::from_accept_header(accept)
+                } else {
+                    Format::Plain
+                }
+            } else {
+                Format::Plain
+            }
+        } else {
+            format
+        };
+
         let clean_path = path
             .strip_suffix(&format!(".{}", ext_str))
             .unwrap_or(path)
@@ -81,10 +96,28 @@ impl FromStr for Format {
             "json" => Ok(Format::Json),
             "xml" => Ok(Format::Xml),
             "csv" => Ok(Format::Csv),
-            "yaml" => Ok(Format::Yaml),
+            "yaml" | "yml" => Ok(Format::Yaml),
             "msgpack" => Ok(Format::Msgpack),
             _ => Ok(Format::Plain),
         }
+    }
+}
+
+impl Format {
+    fn from_accept_header(accept: &str) -> Format {
+        // Parse the Accept header value
+        for media_range in accept.split(',') {
+            let media_type = media_range.split(';').next().unwrap_or("").trim();
+            match media_type {
+                "application/json" => return Format::Json,
+                "application/xml" | "text/xml" => return Format::Xml,
+                "text/csv" => return Format::Csv,
+                "application/yaml" | "text/yaml" => return Format::Yaml,
+                "application/msgpack" | "application/x-msgpack" => return Format::Msgpack,
+                _ => continue,
+            }
+        }
+        Format::Plain
     }
 }
 
@@ -106,19 +139,18 @@ impl Format {
     pub fn from_path(path: &str) -> (Format, &str) {
         let file_name = match Path::new(path).file_name().and_then(|s| s.to_str()) {
             Some(name) => name,
-            None => return (Plain, ""),
+            None => return (Format::Plain, ""),
         };
 
         if let Some(dot_index) = file_name.rfind('.') {
-            let ext = &file_name[dot_index + 1..];
             if dot_index < file_name.len() - 1 {
                 let ext = &file_name[dot_index + 1..];
-                (Format::from_str(&file_name[dot_index + 1..]).unwrap(), ext)
+                (Format::from_str(ext).unwrap(), ext)
             } else {
-                (Plain, ext)
+                (Format::Plain, "")
             }
         } else {
-            (Plain, "")
+            (Format::Plain, "")
         }
     }
 }
