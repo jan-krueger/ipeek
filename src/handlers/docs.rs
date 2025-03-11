@@ -151,7 +151,7 @@ async fn curl_request_table(req: HttpRequest, state: web::Data<Arc<AppState>>) -
     add_row!(
         table,
         "reverse_dns",
-        get_reverse_dns_response(&req).await,
+        get_reverse_dns_response(&req, &state).await,
         &format,
         f
     );
@@ -188,7 +188,7 @@ async fn curl_request_table(req: HttpRequest, state: web::Data<Arc<AppState>>) -
     add_row!(
         table,
         "/blocklist",
-        get_blocklist_response(&req).await,
+        get_blocklist_response(&req, &state).await,
         &format,
         f
     );

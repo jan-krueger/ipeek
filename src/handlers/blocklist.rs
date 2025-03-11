@@ -1,4 +1,4 @@
-use crate::config::DNS_RESOLVER;
+use crate::config::DnsResolver;
 use crate::format_middleware::Format;
 use crate::models::BlocklistReason;
 use crate::models::{BlocklistEntry, BlocklistRecord};
@@ -6,6 +6,9 @@ use crate::util::{format_response, get_ip};
 use actix_web::{HttpMessage, HttpRequest, HttpResponse};
 use std::collections::HashMap;
 use std::net::IpAddr;
+use std::sync::Arc;
+use crate::AppState;
+use actix_web::web;
 
 const BLOCKLISTS: &[&str] = &[
     "zen.spamhaus.org",
@@ -13,21 +16,21 @@ const BLOCKLISTS: &[&str] = &[
     "b.barracudacentral.org",
 ];
 
-pub async fn blocklist_handler(req: HttpRequest) -> HttpResponse {
+pub async fn blocklist_handler(req: HttpRequest, state: web::Data<Arc<AppState>>) -> HttpResponse {
     format_response(
         req.extensions().get::<Format>().unwrap(),
-        &get_blocklist_response(&req).await,
+        &get_blocklist_response(&req, &state).await,
         false,
     )
 }
 
-pub async fn get_blocklist_response(req: &HttpRequest) -> BlocklistRecord {
+pub async fn get_blocklist_response(req: &HttpRequest, state: &web::Data<Arc<AppState>>) -> BlocklistRecord {
     let ip = get_ip(&req);
-    get_blocklist(&ip).await
+    get_blocklist(&ip, &state.dns_resolver).await
 }
 
-pub async fn get_blocklist(ip: &IpAddr) -> BlocklistRecord {
-    let listed_info = check_blocklists(ip).await;
+pub async fn get_blocklist(ip: &IpAddr, resolver: &DnsResolver) -> BlocklistRecord {
+    let listed_info = check_blocklists(ip, resolver).await;
 
     BlocklistRecord {
         ip: ip.to_string(),
@@ -36,7 +39,7 @@ pub async fn get_blocklist(ip: &IpAddr) -> BlocklistRecord {
     }
 }
 
-pub async fn check_blocklists(ip: &IpAddr) -> Vec<BlocklistEntry> {
+pub async fn check_blocklists(ip: &IpAddr, resolver: &DnsResolver) -> Vec<BlocklistEntry> {
     let mut tasks = Vec::new();
     let mut listed_in: Vec<BlocklistEntry> = Vec::new();
 
@@ -51,29 +54,28 @@ pub async fn check_blocklists(ip: &IpAddr) -> Vec<BlocklistEntry> {
 
         for &dnsbl in BLOCKLISTS {
             let query = format!("{}.{}", reversed_ip, dnsbl);
+            let resolver = resolver.clone();
 
             tasks.push(tokio::spawn(async move {
-                (dnsbl, DNS_RESOLVER.lookup_ip(query).await.ok())
+                (dnsbl, resolver.lookup_blocklist(query).await)
             }));
         }
 
         for task in tasks {
-            if let Ok((dnsbl, Some(response))) = task.await {
-                if let Some(addr) = response.iter().next() {
-                    let reason = BlocklistReason::from(
-                        dnsbl.to_string().as_str(),
-                        addr.to_string().as_str(),
-                    );
+            if let Ok((dnsbl, Some(addr))) = task.await {
+                let reason = BlocklistReason::from(
+                    dnsbl.to_string().as_str(),
+                    addr.to_string().as_str(),
+                );
 
-                    if reason == BlocklistReason::Unknown {
-                        continue;
-                    }
-
-                    listed_in.push(BlocklistEntry {
-                        dnsbl: dnsbl.to_string(),
-                        reason,
-                    });
+                if reason == BlocklistReason::Unknown {
+                    continue;
                 }
+
+                listed_in.push(BlocklistEntry {
+                    dnsbl: dnsbl.to_string(),
+                    reason,
+                });
             }
         }
     }

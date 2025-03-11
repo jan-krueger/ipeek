@@ -2,3 +2,7 @@
 server_address = "0.0.0.0:8080"
 geo_db_path = "/home/jan/Downloads/GeoLite2-City.mmdb"
 asn_db_path = "/home/jan/Downloads/GeoLite2-ASN.mmdb"
+
+[dns]
+reverse_dns_timeout_ms = 500
+blocklist_timeout_ms = 500

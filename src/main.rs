@@ -13,6 +13,7 @@ use std::time::Duration;
 struct AppState {
     geo_db: Reader<Vec<u8>>,
     asn_db: Reader<Vec<u8>>,
+    dns_resolver: config::DnsResolver,
 }
 
 #[actix_web::main]
@@ -23,10 +24,13 @@ async fn main() -> std::io::Result<()> {
         Reader::open_readfile(&config.geo_db_path).expect("Could not open GeoLite2 City database");
     let asn_reader =
         Reader::open_readfile(&config.asn_db_path).expect("Could not open GeoLite2 ASN database");
+    
+    let dns_resolver = config::DnsResolver::new(&config.dns);
 
     let shared_state = Arc::new(AppState {
         geo_db: geo_reader,
         asn_db: asn_reader,
+        dns_resolver,
     });
 
     println!("Starting ipeek on http://{}", config.server_address);

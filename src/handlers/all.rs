@@ -19,13 +19,13 @@ pub async fn all_handler(req: HttpRequest, state: web::Data<Arc<AppState>>) -> H
 
 pub async fn get_all_response(req: &HttpRequest, state: &web::Data<Arc<AppState>>) -> AllResponse {
     let ip = get_ip(&req);
-    let reverse_dns = get_reverse_dns(ip).await.unwrap_or("".to_string());
+    let reverse_dns = get_reverse_dns(ip, &state.dns_resolver).await.unwrap_or("".to_string());
     let country = get_country(ip, &state.geo_db).unwrap_or("".to_string());
     let country_code = get_country_code(ip, &state.geo_db).unwrap_or("".to_string());
     let region = get_region(ip, &state.geo_db).unwrap_or("".to_string());
     let city = get_city(ip, &state.geo_db).unwrap_or("".to_string());
     let asn = get_asn_info(&req, &state.asn_db);
-    let blocklist = get_blocklist(&ip).await;
+    let blocklist = get_blocklist(&ip, &state.dns_resolver).await;
 
     AllResponse {
         ip: ip.to_string(),
