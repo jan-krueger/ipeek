@@ -1,7 +1,7 @@
 use crate::config::DNS_RESOLVER;
 use crate::format_middleware::Format;
-use crate::models::BlocklistReason::Unknown;
-use crate::models::{BlocklistEntry, BlocklistReason, BlocklistRecord};
+use crate::models::BlocklistReason;
+use crate::models::{BlocklistEntry, BlocklistRecord};
 use crate::util::{format_response, get_ip};
 use actix_web::{HttpMessage, HttpRequest, HttpResponse};
 use std::collections::HashMap;
@@ -65,7 +65,7 @@ pub async fn check_blocklists(ip: &IpAddr) -> Vec<BlocklistEntry> {
                         addr.to_string().as_str(),
                     );
 
-                    if reason == Unknown {
+                    if reason == BlocklistReason::Unknown {
                         continue;
                     }
 
