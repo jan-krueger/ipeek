@@ -10,7 +10,7 @@ use crate::handlers::ip::get_ip_response;
 use crate::handlers::region::get_region_response;
 use crate::handlers::reverse_dns::get_reverse_dns_response;
 use crate::models::{ToCsv, ToPlainText};
-use crate::util::{format_response, is_browser};
+use crate::util::{client_supports_color, format_response};
 use crate::AppState;
 use actix_web::body::MessageBody;
 use actix_web::{web, HttpMessage, HttpRequest, HttpResponse};
@@ -45,9 +45,7 @@ pub async fn docs_handler(req: HttpRequest, state: web::Data<Arc<AppState>>) -> 
     let remote_host = info.reverse_dns;
     let country_code = info.country;
 
-    let (green, yellow, magenta, red, cyan, reset, bold, highlight) = if is_browser(&req) {
-        ("", "", "", "", "", "", "", "")
-    } else {
+    let (green, yellow, magenta, red, cyan, reset, bold, highlight) = if client_supports_color(&req) {
         (
             "\x1b[32m",        // green
             "\x1b[33m",        // yellow
@@ -58,6 +56,8 @@ pub async fn docs_handler(req: HttpRequest, state: web::Data<Arc<AppState>>) -> 
             "\x1b[1m",         // bold
             "\x1b[33m\x1b[1m", // yellow + bold
         )
+    } else {
+        ("", "", "", "", "", "", "", "")
     };
 
     let ascii_art = format!(
@@ -201,10 +201,10 @@ async fn curl_request_table(req: HttpRequest, state: web::Data<Arc<AppState>>) -
         Cell::new("(Documentation in plain-text format)").fg(Color::DarkYellow),
     ]);
 
-    if is_browser(&req) {
-        table.force_no_tty();
-    } else {
+    if client_supports_color(&req) {
         table.enforce_styling();
+    } else {
+        table.force_no_tty();
     }
     table.to_string()
 }

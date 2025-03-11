@@ -118,3 +118,50 @@ pub fn is_browser(req: &HttpRequest) -> bool {
     }
     false
 }
+
+static API_TOOLS: [&str; 8] = [
+    "postman",
+    "httpie",
+    "insomnia",
+    "swagger",
+    "apifox",
+    "soapui",
+    "paw/",
+    "rest-client",  // VS Code REST Client
+];
+
+pub fn client_supports_color(req: &HttpRequest) -> bool {
+    if is_browser(req) {
+        return false;
+    }
+
+    if let Some(ua_value) = req.headers().get("User-Agent") {
+        if let Ok(ua_str) = ua_value.to_str() {
+            let ua_str_lower = ua_str.to_ascii_lowercase();
+            if API_TOOLS.iter().any(|tool| ua_str_lower.contains(tool)) {
+                return false;
+            }
+        }
+    }
+
+    if let Some(host) = req.headers().get("Host") {
+        if let Ok(host_str) = host.to_str() {
+            match host_str {
+                "pie.dev" => return false,        // HTTPie
+                "api.hoppscotch.io" => return false,  // Hoppscotch
+                "thunder-client.com" => return false, // Thunder Client (VS Code)
+                _ => {}
+            }
+        }
+    }
+
+    if req.headers().get("X-Insomnia-Client").is_some() ||     // Insomnia
+       req.headers().get("X-Postman-Interceptor").is_some() ||  // Postman Interceptor
+       req.headers().get("Hoppscotch-Origin").is_some() ||     // Hoppscotch
+       req.headers().get("X-Bruno").is_some()                   // Bruno
+    {
+        return false;
+    }
+
+    true
+}
