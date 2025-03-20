@@ -116,6 +116,7 @@ impl Format {
                 "application/yaml" | "text/yaml" => return Format::Yml,
                 "application/msgpack" | "application/x-msgpack" => return Format::Msgpack,
                 "text/plain" => return Format::Txt,
+                "text/html" => return Format::Plain,
                 _ => continue,
             }
         }
